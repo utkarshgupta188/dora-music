@@ -2,8 +2,10 @@ from flask import Flask, render_template, jsonify, request, Response
 from music_api import search_tracks, get_recommendations
 import requests
 import re
+import os
 
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 @app.route('/')
 def index():
