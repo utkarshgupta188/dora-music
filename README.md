@@ -101,8 +101,7 @@ We welcome contributions! Here's how you can get started:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👥 Authors & Contributors
-- **Maintainer**: [Your Name](https://github.com/your-username)
-- **Contributors**: [Contributor 1](https://github.com/contributor1), [Contributor 2](https://github.com/contributor2)
+- **Maintainer**: [Utkarsh Gupta](https://github.com/utkarshgupta188)
 
 ## 🐛 Issues & Support
 - **Report an issue**: If you encounter a bug or have a feature request, please open an issue on the [GitHub Issues page](https://github.com/your-username/dora-music/issues).
@@ -122,9 +121,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ### Badges
-[![Build Status](https://travis-ci.com/your-username/dora-music.svg?branch=main)](https://travis-ci.com/your-username/dora-music)
+[![Build Status](https://travis-ci.com/utkarshgupta188/dora-music.svg?branch=main)](https://travis-ci.com/utkarshgupta188/dora-music)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub stars](https://img.shields.io/github/stars/your-username/dora-music?style=social)](https://github.com/your-username/dora-music)
+[![GitHub stars](https://img.shields.io/github/stars/utkarshgupta188/dora-music?style=social)](https://github.com/utkarshgupta188/dora-music)
 
 ---
 
