@@ -43,10 +43,6 @@ python app.py
 # Open your browser and visit http://localhost:5000
 ```
 
-### Alternative Installation Methods
-- **Docker**: You can use Docker to run the application. Check the [Dockerfile](Dockerfile) for instructions.
-- **Development Setup**: Follow the [development setup guide](DEVELOPMENT.md) for a more detailed setup.
-
 ## 🎯 Usage
 
 ### Basic Usage
@@ -62,7 +58,6 @@ python app.py
 
 ### Advanced Usage
 - **Customization**: You can customize the application by modifying the CSS and JavaScript files in the `static` directory.
-- **API Documentation**: For more information on the API endpoints, refer to the [API documentation](API.md).
 
 ## 📁 Project Structure
 ```
@@ -104,7 +99,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Maintainer**: [Utkarsh Gupta](https://github.com/utkarshgupta188)
 
 ## 🐛 Issues & Support
-- **Report an issue**: If you encounter a bug or have a feature request, please open an issue on the [GitHub Issues page](https://github.com/your-username/dora-music/issues).
+- **Report an issue**: If you encounter a bug or have a feature request, please open an issue on the [GitHub Issues page](https://github.com/utkarshgupta188/dora-music/issues).
 - **Get help**: For general support, feel free to open an issue or contact the maintainers directly.
 
 ## 🗺️ Roadmap
@@ -121,7 +116,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ### Badges
-[![Build Status](https://travis-ci.com/utkarshgupta188/dora-music.svg?branch=main)](https://travis-ci.com/utkarshgupta188/dora-music)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/utkarshgupta188/dora-music?style=social)](https://github.com/utkarshgupta188/dora-music)
 
