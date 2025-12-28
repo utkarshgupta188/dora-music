@@ -1,0 +1,21 @@
+{
+    "name": "Dora Music",
+    "short_name": "Dora",
+    "description": "Modern music player with infinite radio.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f0f13",
+    "theme_color": "#f6d365",
+    "icons": [
+        {
+            "src": "/static/default-album.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "/static/default-album.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ]
+}

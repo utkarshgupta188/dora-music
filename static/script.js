@@ -54,6 +54,7 @@ function init() {
     setupPlayerListeners();
     setupSearchListeners();
     setupSettings();
+    setupKeyboardShortcuts();
     renderFavorites();
 }
 
@@ -490,6 +491,53 @@ function showLoading(show) {
 function showError(msg) {
     console.error(msg);
     // Could add toast notification here
+}
+
+// --- Keyboard Shortcuts ---
+
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Ignore if typing in an input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        // Space: Play/Pause
+        if (e.code === 'Space') {
+            e.preventDefault(); // Prevent scroll
+            togglePlay();
+        }
+
+        // Left: Seek -5s
+        if (e.code === 'ArrowLeft') {
+            e.preventDefault();
+            if (player.audio.duration) {
+                player.audio.currentTime = Math.max(0, player.audio.currentTime - 5);
+            }
+        }
+
+        // Right: Seek +5s
+        if (e.code === 'ArrowRight') {
+            e.preventDefault();
+            if (player.audio.duration) {
+                player.audio.currentTime = Math.min(player.audio.duration, player.audio.currentTime + 5);
+            }
+        }
+
+        // Up: Volume +10%
+        if (e.code === 'ArrowUp') {
+            e.preventDefault();
+            const newVol = Math.min(1, player.audio.volume + 0.1);
+            player.audio.volume = newVol;
+            player.volumeSlider.value = newVol * 100;
+        }
+
+        // Down: Volume -10%
+        if (e.code === 'ArrowDown') {
+            e.preventDefault();
+            const newVol = Math.max(0, player.audio.volume - 0.1);
+            player.audio.volume = newVol;
+            player.volumeSlider.value = newVol * 100;
+        }
+    });
 }
 
 // initialize
