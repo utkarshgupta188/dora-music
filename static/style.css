@@ -800,6 +800,8 @@ body {
         background: rgba(255, 255, 255, 0.2);
         margin: 5px 0;
         align-self: center;
+        display: none;
+        /* Hide in mini player on mobile */
     }
 
     .progress-bar {
@@ -879,9 +881,15 @@ body {
         bottom: 0;
         left: 0;
         width: 100%;
+        max-width: 100vw;
+        /* Prevent horizontal overflow */
         height: 100%;
+        box-sizing: border-box;
+        /* Include padding in width */
         border-radius: 0;
         padding: 40px 20px;
+        overflow-y: auto;
+        /* Allow scrolling if screen is too short */
         justify-content: center;
         background: rgba(20, 20, 25, 0.98);
         /* Darker, almost solid */
@@ -942,6 +950,11 @@ body {
         background: rgba(255, 255, 255, 0.1);
         border-radius: 50%;
         margin: 0;
+        transform: none !important;
+        /* Fix overlap caused by inherited transform */
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     /* Show Like Button */
@@ -969,10 +982,15 @@ body {
             "info info"
             "like add";
         grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto;
         justify-items: center;
         width: 100%;
-        margin-bottom: 20px;
-        gap: 15px;
+        margin-bottom: 40px;
+        /* Increased from 20px */
+        gap: 25px;
+        /* Increased from 15px */
+        row-gap: 30px;
+        /* Extra spacing between rows */
     }
 
     .music-player-glass.expanded #playerImage {
@@ -1002,34 +1020,66 @@ body {
     .music-player-glass.expanded .player-center {
         position: static;
         width: 100%;
+        margin-top: 30px;
+        /* Push seek bar down from buttons */
         margin-bottom: 20px;
     }
 
     .music-player-glass.expanded .progress-container {
+        display: block;
+        /* Show in expanded player */
         height: 6px;
         background: rgba(255, 255, 255, 0.2);
         margin: 10px 0;
     }
 
     /* Make slider visible */
-    .seek-slider {
+    .music-player-glass.expanded .seek-slider {
         opacity: 1 !important;
         -webkit-appearance: none;
         appearance: none;
-        background: transparent;
-        height: 20px;
-        top: -7px;
+        background: rgba(255, 255, 255, 0.2);
+        /* Visible track */
+        height: 6px;
+        border-radius: 3px;
+        top: 0;
+        position: relative;
     }
 
-    .seek-slider::-webkit-slider-thumb {
+    .music-player-glass.expanded .seek-slider::-webkit-slider-runnable-track {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .music-player-glass.expanded .seek-slider::-moz-range-track {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .music-player-glass.expanded .seek-slider::-webkit-slider-thumb {
         -webkit-appearance: none;
-        height: 12px;
-        width: 12px;
+        height: 14px;
+        width: 14px;
         border-radius: 50%;
         background: var(--primary-color);
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-        margin-top: -3px;
-        /* visual alignment */
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        margin-top: -4px;
+        /* Center 14px thumb on 6px track */
+    }
+
+    .music-player-glass.expanded .seek-slider::-moz-range-thumb {
+        height: 14px;
+        width: 14px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        border: none;
+        margin-top: -4px;
+        /* Center 14px thumb on 6px track */
     }
 
     .music-player-glass.expanded .progress-wrapper span {
