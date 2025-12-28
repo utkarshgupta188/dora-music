@@ -57,6 +57,13 @@ const newPlaylistName = document.getElementById('newPlaylistName');
 const confirmCreatePlaylist = document.getElementById('confirmCreatePlaylist');
 const closePlaylistModal = document.getElementById('closePlaylistModal');
 
+// Download Modal
+const downloadConfirmModal = document.getElementById('downloadConfirmModal');
+const closeDownloadModal = document.getElementById('closeDownloadModal');
+const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
+const confirmDownloadBtn = document.getElementById('confirmDownloadBtn');
+const downloadCountSpan = document.getElementById('downloadCount');
+
 // --- Initialization ---
 
 function init() {
@@ -264,29 +271,23 @@ function renderQueue() {
 }
 
 async function downloadTrack(track) {
-    const selectedUrl = getUrlForQuality(track);
-    if (!selectedUrl) {
-        showError('Download URL not available');
+    console.log("Attempting download for:", track.name, "ID:", track.id);
+    if (!track.id) {
+        console.error("Invalid track ID for download");
+        showToast('Invalid track ID', 'times');
         return;
     }
 
-    // Create a temporary link to trigger download directly if possible
-    // Or use the backend proxy if CORS is an issue. The old app used /api/download/<id>
-    // Let's use the backend proxy to be safe and consistent with previous app, 
-    // but we need to pass the quality URL or letting backend decide?
-    // The backend /api/download/<id> fetches fresh details. 
-    // If we want to use the *exact* quality we selected in frontend, we should probably pass the URL to backend?
-    // Or just pass the quality preference to backend.
+    showToast(`Downloading: ${track.name}`, 'download');
 
-    // Simplest approach: Update backend to accept quality query param
-    // Frontend:
-    const quality = state.quality;
+    const quality = state.quality || '320kbps';
 
     // Create hidden link
     const link = document.createElement('a');
     link.href = `/api/download/${track.id}?quality=${quality}`;
-    link.download = `${track.name}.mp3`; // Backend handles content-disposition usually
+    link.download = `${track.name}.mp3`;
     document.body.appendChild(link);
+    console.log("Clicking download link:", link.href);
     link.click();
     document.body.removeChild(link);
 }
@@ -596,12 +597,13 @@ function setupPlaylists() {
 
 function createPlaylist(name) {
     if (state.playlists[name]) {
-        alert("Playlist already exists!");
+        showToast("Playlist already exists!", 'exclamation-triangle');
         return;
     }
     state.playlists[name] = [];
     savePlaylists();
     renderPlaylists();
+    showToast(`Playlist "${name}" created`, 'check');
 }
 
 function savePlaylists() {
@@ -694,7 +696,7 @@ function openPlaylist(name) {
             </button>
             <h2 style="margin: 0;">${name}</h2>
         </div>
-        <button id="downloadAllBtn" class="nav-btn active" style="padding: 0.5rem 1rem;">
+        <button id="downloadAllBtn" class="primary-action-btn">
             <i class="fas fa-download"></i> Download All
         </button>
     `;
@@ -711,9 +713,40 @@ function openPlaylist(name) {
     // Logic for Download All
     const tracks = state.playlists[name];
     header.querySelector('#downloadAllBtn').addEventListener('click', () => {
-        if (confirm(`Download all ${tracks.length} tracks from "${name}"? This might take a while.`)) {
+        if (tracks.length === 0) return;
+
+        // Show Custom Modal
+        downloadCountSpan.textContent = tracks.length;
+        downloadConfirmModal.classList.add('active');
+
+        // Setup One-time listener for confirm
+        const handleConfirm = () => {
+            showToast(`Starting download of ${tracks.length} tracks...`, 'layer-group');
             downloadAll(tracks);
-        }
+            downloadConfirmModal.classList.remove('active');
+            cleanup();
+        };
+
+        const handleClose = () => {
+            downloadConfirmModal.classList.remove('active');
+            cleanup();
+        };
+
+        const cleanup = () => {
+            confirmDownloadBtn.removeEventListener('click', handleConfirm);
+            cancelDownloadBtn.removeEventListener('click', handleClose);
+            closeDownloadModal.removeEventListener('click', handleClose);
+            downloadConfirmModal.removeEventListener('click', outsideClick);
+        };
+
+        const outsideClick = (e) => {
+            if (e.target === downloadConfirmModal) handleClose();
+        };
+
+        confirmDownloadBtn.addEventListener('click', handleConfirm);
+        cancelDownloadBtn.addEventListener('click', handleClose);
+        closeDownloadModal.addEventListener('click', handleClose);
+        downloadConfirmModal.addEventListener('click', outsideClick);
     });
 
     // Display Tracks (Append after header)
@@ -805,16 +838,40 @@ function showAddToPlaylistModal(track) {
 
 function renderPlaylistOptions() {
     playlistList.innerHTML = '';
-    Object.keys(state.playlists).forEach(name => {
+    const names = Object.keys(state.playlists);
+
+    if (names.length === 0) {
+        playlistList.innerHTML = '<p style="text-align:center; padding: 10px; color: var(--text-secondary);">No playlists found</p>';
+        return;
+    }
+
+    names.forEach(name => {
         const li = document.createElement('li');
-        li.textContent = name;
-        li.style.cursor = 'pointer';
-        li.style.padding = '10px';
-        li.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+
+        // Icon
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-music';
+
+        // Name
+        const text = document.createElement('span');
+        text.textContent = name;
+
+        // Count
+        const count = document.createElement('small');
+        count.style.marginLeft = 'auto';
+        count.style.color = 'var(--text-secondary)';
+        count.textContent = `${state.playlists[name].length} songs`;
+
+        li.appendChild(icon);
+        li.appendChild(text);
+        li.appendChild(count);
+
+        // Event Listener
         li.addEventListener('click', () => {
             addToPlaylist(name, trackToAddToPlaylist);
-            addToPlaylistModal.classList.remove('active');
+            // addToPlaylistModal.classList.remove('active') is handled in addToPlaylist
         });
+
         playlistList.appendChild(li);
     });
 }
@@ -823,10 +880,10 @@ function addToPlaylist(playlistName, track) {
     if (!state.playlists[playlistName].some(t => t.id === track.id)) {
         state.playlists[playlistName].push(track);
         savePlaylists();
-        // Feedback?
-        alert(`Added to ${playlistName}`);
+        showToast(`Added to ${playlistName}`, 'check');
+        addToPlaylistModal.classList.remove('active');
     } else {
-        alert('Track already in playlist');
+        showToast('Track already in playlist', 'exclamation-circle');
     }
 }
 
@@ -838,29 +895,45 @@ function saveQueue() {
 }
 
 function restorePlayerState() {
-    // If we have a queue and a valid index, restore the player UI
     if (state.currentPlaylist.length > 0 && state.currentTrackIndex >= 0 && state.currentTrackIndex < state.currentPlaylist.length) {
         const track = state.currentPlaylist[state.currentTrackIndex];
 
-        // Update UI (Copied from playsTrack but without playing)
         player.trackName.textContent = track.name;
         player.artistName.textContent = track.artist;
         player.image.src = track.image;
         player.container.style.display = 'flex';
 
-        // Prepare audio src but don't play
         const selectedUrl = getUrlForQuality(track);
         if (selectedUrl) {
             player.audio.src = selectedUrl;
         }
 
         updateLikeButton(track.id);
-
         console.log("Player state restored:", track.name);
     }
 }
 
 // --- Helpers ---
+const toastContainer = document.getElementById('toast-container');
+
+function showToast(message, icon = 'info-circle') {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+
+    toastContainer.appendChild(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    // Remove after 3s
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 
 function showLoading(show) {
     if (show) loading.classList.add('active');

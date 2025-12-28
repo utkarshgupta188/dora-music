@@ -123,6 +123,28 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Download Confirmation Modal -->
+            <div id="downloadConfirmModal" class="modal">
+                <div class="modal-content glass-panel" style="max-width: 400px; text-align: center;">
+                    <span class="close-modal" id="closeDownloadModal">&times;</span>
+                    <h2 style="margin-bottom: 1rem;"><i class="fas fa-file-download"></i> Download All?</h2>
+                    <p style="margin-bottom: 1.5rem; color: var(--text-secondary); line-height: 1.5;">
+                        You are about to download <span id="downloadCount"
+                            style="color: var(--primary-color); font-weight: bold;">0</span> tracks.
+                        <br><br>
+                        <i class="fas fa-exclamation-circle"></i> <strong>Important:</strong><br>
+                        Your browser might ask for permission to download multiple files. Please click
+                        <strong>"Allow"</strong>.
+                    </p>
+                    <div style="display: flex; gap: 1rem; justify-content: center;">
+                        <button id="cancelDownloadBtn" class="nav-btn"
+                            style="border: 1px solid var(--glass-border);">Cancel</button>
+                        <button id="confirmDownloadBtn" class="primary-action-btn" style="width: auto;">Start
+                            Download</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -166,6 +188,7 @@
         <audio id="audioPlayer"></audio>
     </div>
 
+    <div id="toast-container"></div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
         if ('serviceWorker' in navigator) {
