@@ -34,6 +34,7 @@ def search_tracks(query, page=0, limit=5):
                     'album': track.get('album', {}).get('name', 'N/A'),
                     'duration': track.get('duration', ''),
                     'play_url': download_url,
+                    'downloadUrls': track.get('downloadUrl', []),
                     'image': image_url,
                     'language': track.get('language', ''),
                     'url': track.get('url', '')
@@ -83,6 +84,7 @@ def get_recommendations(track_id, limit=5):
                 'album': str(track.get('album', {}).get('name', 'N/A')),
                 'duration': str(track.get('duration', '')),
                 'play_url': str(download_url),
+                'downloadUrls': track.get('downloadUrl', []),
                 'image': str(image_url),
                 'language': str(track.get('language', '')),
                 'url': str(track.get('url', ''))

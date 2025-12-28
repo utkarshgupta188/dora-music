@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,62 +9,129 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
-    <!-- Music Player -->
-    <div class="music-player" id="musicPlayer">
-        <div class="player-content">
-            <div class="player-left">
-                <img id="playerImage" src="/static/default-album.png" alt="Album Art">
-                <div class="track-info">
-                    <div id="playerTrackName">No track selected</div>
-                    <div id="playerArtistName">-</div>
-                </div>
+    <!-- Background Animation -->
+    <div class="background-animate"></div>
+
+    <!-- Main Container -->
+    <div class="glass-container">
+        <!-- Sidebar / Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-music"></i>
+                <span>Dora</span>
             </div>
-            <div class="player-center">
-                <div class="player-controls">
-                    <button id="prevButton" class="control-button"><i class="fas fa-backward"></i></button>
-                    <button id="playPauseButton" class="control-button"><i class="fas fa-play"></i></button>
-                    <button id="nextButton" class="control-button"><i class="fas fa-forward"></i></button>
-                </div>
-                <div class="progress-container">
-                    <span id="currentTime">0:00</span>
-                    <div class="progress-bar">
-                        <div class="progress" id="progress"></div>
+
+            <div class="nav-links">
+                <button id="navSearch" class="nav-btn active">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <button id="navFavorites" class="nav-btn">
+                    <i class="fas fa-heart"></i> Favorites
+                </button>
+                <button id="navQueue" class="nav-btn">
+                    <i class="fas fa-list-ol"></i> Queue
+                </button>
+                <button id="navSettings" class="nav-btn">
+                    <i class="fas fa-cog"></i> Quality
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Search View -->
+            <div id="searchView" class="view-section active">
+                <header class="header">
+                    <h1>Discover Music</h1>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Search for songs, artists...">
                     </div>
-                    <span id="duration">0:00</span>
+                </header>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Searching...</p>
+                </div>
+
+                <div id="error" class="error-message"></div>
+                <div id="resultsContainer" class="results-grid"></div>
+            </div>
+
+            <!-- Favorites View -->
+            <div id="favoritesView" class="view-section">
+                <header class="header">
+                    <h1>Your Library</h1>
+                </header>
+                <div id="favoritesContainer" class="results-grid"></div>
+            </div>
+
+            <!-- Queue View -->
+            <div id="queueView" class="view-section">
+                <header class="header">
+                    <h1>Current Queue</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">History & Next Up</p>
+                </header>
+                <div id="queueContainer" class="results-grid"></div>
+            </div>
+
+            <!-- Settings Modal (Simple overlay for now) -->
+            <div id="settingsModal" class="modal">
+                <div class="modal-content glass-card">
+                    <span class="close-modal">&times;</span>
+                    <h2>Audio Quality</h2>
+                    <div class="quality-options">
+                        <label><input type="radio" name="quality" value="320kbps"> High (320kbps)</label>
+                        <label><input type="radio" name="quality" value="160kbps"> Medium (160kbps)</label>
+                        <label><input type="radio" name="quality" value="96kbps"> Standard (96kbps)</label>
+                        <label><input type="radio" name="quality" value="48kbps"> Data Saver (48kbps)</label>
+                        <label><input type="radio" name="quality" value="12kbps"> Low (12kbps)</label>
+                    </div>
                 </div>
             </div>
-            <div class="player-right">
-                <div class="volume-control">
-                    <i class="fas fa-volume-up"></i>
-                    <input type="range" id="volumeSlider" min="0" max="100" value="100">
-                </div>
-            </div>
-        </div>
-        <audio id="audioPlayer"></audio>
+        </main>
     </div>
-    <div class="container">
-        <header class="header">
-            <h1>🎵 Dora Player</h1>
-            <p>Search for your favorite songs and discover similar tracks</p>
-        </header>
 
-        <div class="search-container">
-            <input type="text" id="searchInput" class="search-input" placeholder="Search for songs...">
-            <button id="searchButton" class="search-button">Search</button>
+    <!-- Modern Glass Player -->
+    <div class="music-player-glass" id="musicPlayer">
+        <div class="player-left">
+            <img id="playerImage" src="/static/default-album.png" alt="Album Art" class="spin-art">
+            <div class="track-info">
+                <div id="playerTrackName">No track selected</div>
+                <div id="playerArtistName">-</div>
+            </div>
+            <button id="playerLikeBtn" class="action-btn"><i class="far fa-heart"></i></button>
         </div>
 
-        <div id="loading" class="loading">
-            <p>Searching for tracks...</p>
+        <div class="player-center">
+            <div class="player-controls">
+                <!-- <button class="control-btn sm"><i class="fas fa-random"></i></button> -->
+                <button id="prevButton" class="control-btn"><i class="fas fa-step-backward"></i></button>
+                <button id="playPauseButton" class="control-btn main-play"><i class="fas fa-play"></i></button>
+                <button id="nextButton" class="control-btn"><i class="fas fa-step-forward"></i></button>
+                <!-- <button class="control-btn sm"><i class="fas fa-redo"></i></button> -->
+            </div>
+            <div class="progress-wrapper">
+                <span id="currentTime">0:00</span>
+                <div class="progress-bar-container">
+                    <div class="progress-fill" id="progress"></div>
+                    <input type="range" class="seek-slider" id="seekSlider" min="0" value="0">
+                </div>
+                <span id="duration">0:00</span>
+            </div>
         </div>
 
-        <div id="error" class="error-message"></div>
+        <div class="player-right">
+            <i class="fas fa-volume-up"></i>
+            <input type="range" id="volumeSlider" min="0" max="100" value="100">
+        </div>
 
-        <div id="resultsContainer" class="results-container"></div>
-        
-        <div id="recommendations" class="recommendations"></div>
+        <audio id="audioPlayer"></audio>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
+
 </html>

@@ -53,8 +53,40 @@ def download_track(track_id):
         
         # Get the highest quality download URL
         download_url = None
+        requested_quality = request.args.get('quality', '320kbps')
+        quality_map = {
+            '320kbps': 320,
+            '160kbps': 160,
+            '96kbps': 96,
+            '48kbps': 48,
+            '12kbps': 12
+        }
+        target_bitrate = quality_map.get(requested_quality, 320)
+
         if track_data.get('downloadUrl'):
-            download_url = next((url['url'] for url in reversed(track_data.get('downloadUrl', []))), '')
+            urls = track_data.get('downloadUrl', [])
+            # Sort by bitrate
+            def get_bitrate(u):
+                try:
+                    return int(u.get('quality', '0').replace('kbps', ''))
+                except:
+                    return 0
+            
+            sorted_urls = sorted(urls, key=get_bitrate)
+            
+            # Find closest match
+            chosen = None
+            for u in sorted_urls:
+                if str(target_bitrate) in u.get('quality', ''):
+                    chosen = u
+                    break
+            
+            # Fallback to highest if no exact match or just pick last
+            if not chosen and sorted_urls:
+                 chosen = sorted_urls[-1]
+                 
+            if chosen:
+                download_url = chosen.get('url')
         
         if not download_url:
             return jsonify({'error': 'Download URL not available'}), 404
