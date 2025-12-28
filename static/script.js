@@ -80,26 +80,85 @@ function init() {
 // --- Navigation ---
 
 function setupNavigation() {
-    nav.search.addEventListener('click', () => switchView('search'));
-    nav.favorites.addEventListener('click', () => switchView('favorites'));
-    nav.queue.addEventListener('click', () => switchView('queue'));
+    console.log("Setting up navigation with delegation...");
 
-    // Settings Modal
-    nav.settings.addEventListener('click', () => settingsModal.classList.add('active'));
-    document.querySelector('.close-modal').addEventListener('click', () => settingsModal.classList.remove('active'));
-    settingsModal.addEventListener('click', (e) => {
-        if (e.target === settingsModal) settingsModal.classList.remove('active');
+    // Remove individual listeners if they existed (optional, but delegation supersedes)
+
+    // Delegation on Document body
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('button') || e.target.closest('.nav-btn') || e.target.closest('.close-modal');
+        const modalOverlay = e.target.closest('.modal');
+
+        // Handle Modal Close (outside click)
+        if (e.target.classList.contains('modal')) {
+            e.target.classList.remove('active');
+            return;
+        }
+
+        if (!btn) return;
+
+        // Navigation Buttons
+        if (btn.id === 'navSearch' || btn.closest('#navSearch')) {
+            switchView('search');
+        } else if (btn.id === 'navFavorites' || btn.closest('#navFavorites')) {
+            switchView('favorites');
+        } else if (btn.id === 'navQueue' || btn.closest('#navQueue')) {
+            console.log("Delegated: Queue Clicked");
+            switchView('queue');
+        } else if (btn.id === 'navPlaylists' || btn.closest('#navPlaylists')) {
+            switchView('playlists');
+        }
+        // Settings / Quality
+        else if (btn.id === 'navSettings' || btn.closest('#navSettings')) {
+            console.log("Delegated: Settings Clicked");
+            const modal = document.getElementById('settingsModal');
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.setProperty('display', 'flex', 'important');
+            } else {
+                console.warn("Dynamic lookup: Settings Modal NOT FOUND");
+            }
+        }
+        // Modal Close Buttons
+        else if (btn.classList.contains('close-modal')) {
+            const modal = btn.closest('.modal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.setProperty('display', 'none', 'important');
+            }
+
+            const dynSettings = document.getElementById('settingsModal');
+            if (dynSettings) {
+                dynSettings.classList.remove('active');
+                dynSettings.style.setProperty('display', 'none', 'important');
+            }
+        }
     });
 }
 
 function switchView(viewName) {
+    console.log(`Switching to view: ${viewName}`);
+
     // Update Nav
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    if (nav[viewName]) nav[viewName].classList.add('active');
+    const activeNav = document.getElementById(`nav${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`);
+    if (activeNav) activeNav.classList.add('active');
 
     // Update View
-    document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
-    views[viewName].classList.add('active');
+    document.querySelectorAll('.view-section').forEach(view => {
+        view.classList.remove('active');
+        view.style.setProperty('display', 'none', 'important');
+    });
+
+    // Dynamic Select
+    const activeView = document.getElementById(`${viewName}View`);
+    if (activeView) {
+        activeView.classList.add('active');
+        activeView.style.setProperty('display', 'block', 'important');
+        console.log(`View ${viewName} activated`);
+    } else {
+        console.error(`View element #${viewName}View not found!`);
+    }
 
     if (viewName === 'favorites') {
         renderFavorites();
@@ -383,6 +442,36 @@ function getUrlForQuality(track) {
     return track.play_url; // Fallback to safe default
 }
 
+
+
+function playNextTrack() {
+    // If next track exists in queue
+    if (state.currentTrackIndex < state.currentPlaylist.length - 1) {
+        state.currentTrackIndex++;
+        playTrack(state.currentPlaylist[state.currentTrackIndex], false);
+    } else {
+        // Auto-fetch recommendations
+        handleTrackEnd();
+    }
+}
+
+function playPrevTrack() {
+    // If > 2 seconds, restart track
+    if (player.audio.currentTime > 2) {
+        player.audio.currentTime = 0;
+        return;
+    }
+
+    // Else go to previous track
+    if (state.currentTrackIndex > 0) {
+        state.currentTrackIndex--;
+        playTrack(state.currentPlaylist[state.currentTrackIndex], false);
+    } else {
+        // Restart if at start of playlist
+        player.audio.currentTime = 0;
+    }
+}
+
 function setupPlayerListeners() {
     player.playPauseBtn.addEventListener('click', togglePlay);
 
@@ -547,16 +636,28 @@ function renderFavorites() {
 
 // --- Settings ---
 
+
 function setupSettings() {
-    const inputs = document.querySelectorAll('input[name="quality"]');
+    const cards = document.querySelectorAll('.quality-card');
 
-    // Set initial
-    inputs.forEach(input => {
-        if (input.value === state.quality) input.checked = true;
+    // Init active state
+    cards.forEach(card => {
+        if (card.dataset.value === state.quality) {
+            card.classList.add('active');
+        } else {
+            card.classList.remove('active');
+        }
 
-        input.addEventListener('change', (e) => {
-            state.quality = e.target.value;
+        // Click listener
+        card.addEventListener('click', () => {
+            // Update state
+            state.quality = card.dataset.value;
             localStorage.setItem('dora_quality', state.quality);
+            showToast(`Quality set to ${state.quality}`, 'sliders-h');
+
+            // Update UI
+            cards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
         });
     });
 }
@@ -992,5 +1093,79 @@ function setupKeyboardShortcuts() {
     });
 }
 
+// --- Expandable Player ---
+function setupExpandablePlayer() {
+    const player = document.getElementById('musicPlayer');
+
+    player.addEventListener('click', (e) => {
+        // Only toggle if window is small (mobile)
+        if (window.innerWidth > 768) return;
+
+        // Prevent expansion if clicking controls or sliders
+        const isControl = e.target.closest('button') || e.target.closest('input') || e.target.closest('.close-expand-btn');
+        if (isControl) return;
+
+        player.classList.toggle('expanded');
+
+        // Add/Remove close button if expanded
+        if (player.classList.contains('expanded')) {
+            if (!document.querySelector('.close-expand-btn')) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'close-expand-btn';
+                closeBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+                closeBtn.onclick = (ev) => {
+                    ev.stopPropagation();
+                    player.classList.remove('expanded');
+                    closeBtn.remove();
+                };
+                // Prepend to be at top
+                player.insertBefore(closeBtn, player.firstChild);
+            }
+        } else {
+            const btn = document.querySelector('.close-expand-btn');
+            if (btn) btn.remove();
+        }
+    });
+}
+
 // initialize
+function init() {
+    setupNavigation(); // Use the event delegation setup
+    setupSettings();
+
+    document.getElementById('searchBtn').addEventListener('click', () => {
+        const query = document.getElementById('searchInput').value;
+        if (query) {
+            searchTracks(query);
+            document.getElementById('searchInput').blur();
+        }
+    });
+
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const query = e.target.value;
+            if (query) {
+                searchTracks(query);
+                e.target.blur();
+            }
+        }
+    });
+
+    // Player Controls
+    document.getElementById('playPauseButton').addEventListener('click', togglePlay);
+    document.getElementById('prevButton').addEventListener('click', playPrevTrack);
+    document.getElementById('nextButton').addEventListener('click', playNextTrack);
+
+    document.getElementById('audioPlayer').addEventListener('timeupdate', updateProgress);
+    document.getElementById('seekSlider').addEventListener('input', seek);
+    document.getElementById('volumeSlider').addEventListener('input', updateVolume);
+    document.getElementById('audioPlayer').addEventListener('ended', handleTrackEnd);
+
+    setupPlaylists();
+    setupKeyboardShortcuts();
+    setupExpandablePlayer();
+
+    renderFavorites();
+}
+
 document.addEventListener('DOMContentLoaded', init);

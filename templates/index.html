@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Search</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ range(1, 10000) | random }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
@@ -26,19 +26,19 @@
 
             <div class="nav-links">
                 <button id="navSearch" class="nav-btn active">
-                    <i class="fas fa-search"></i> Search
+                    <i class="fas fa-search"></i> <span>Search</span>
                 </button>
                 <button id="navFavorites" class="nav-btn">
-                    <i class="fas fa-heart"></i> Favorites
+                    <i class="fas fa-heart"></i> <span>Favorites</span>
                 </button>
                 <button id="navPlaylists" class="nav-btn">
-                    <i class="fas fa-folder"></i> Playlists
+                    <i class="fas fa-folder"></i> <span>Playlists</span>
                 </button>
                 <button id="navQueue" class="nav-btn">
-                    <i class="fas fa-list-ol"></i> Queue
+                    <i class="fas fa-list-ol"></i> <span>Queue</span>
                 </button>
                 <button id="navSettings" class="nav-btn">
-                    <i class="fas fa-cog"></i> Quality
+                    <i class="fas fa-cog"></i> <span>Quality</span>
                 </button>
             </div>
         </nav>
@@ -50,7 +50,7 @@
                 <header class="header">
                     <h1>Discover Music</h1>
                     <div class="search-box">
-                        <i class="fas fa-search"></i>
+                        <i class="fas fa-search" id="searchBtn" style="cursor: pointer;"></i>
                         <input type="text" id="searchInput" placeholder="Search for songs, artists...">
                     </div>
                 </header>
@@ -99,12 +99,42 @@
                 <div class="modal-content glass-panel">
                     <span class="close-modal">&times;</span>
                     <h2>Audio Quality</h2>
-                    <div class="settings-options">
-                        <label><input type="radio" name="quality" value="320kbps"> High Fidelity (320kbps)</label>
-                        <label><input type="radio" name="quality" value="160kbps"> Balanced (160kbps)</label>
-                        <label><input type="radio" name="quality" value="96kbps"> Standard (96kbps)</label>
-                        <label><input type="radio" name="quality" value="48kbps"> Data Saver (48kbps)</label>
-                        <label><input type="radio" name="quality" value="12kbps"> Low Data (12kbps)</label>
+                    <div class="quality-grid">
+                        <div class="quality-card active" data-value="320kbps">
+                            <i class="fas fa-wifi"></i>
+                            <div class="quality-info">
+                                <h3>High Fidelity</h3>
+                                <p>320kbps</p>
+                            </div>
+                        </div>
+                        <div class="quality-card" data-value="160kbps">
+                            <i class="fas fa-signal"></i>
+                            <div class="quality-info">
+                                <h3>Balanced</h3>
+                                <p>160kbps</p>
+                            </div>
+                        </div>
+                        <div class="quality-card" data-value="96kbps">
+                            <i class="fas fa-compress-arrows-alt"></i>
+                            <div class="quality-info">
+                                <h3>Standard</h3>
+                                <p>96kbps</p>
+                            </div>
+                        </div>
+                        <div class="quality-card" data-value="48kbps">
+                            <i class="fas fa-database"></i>
+                            <div class="quality-info">
+                                <h3>Data Saver</h3>
+                                <p>48kbps</p>
+                            </div>
+                        </div>
+                        <div class="quality-card" data-value="12kbps">
+                            <i class="fas fa-battery-quarter"></i>
+                            <div class="quality-info">
+                                <h3>Low Data</h3>
+                                <p>12kbps</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -189,7 +219,7 @@
     </div>
 
     <div id="toast-container"></div>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v={{ range(1, 10000) | random }}"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
