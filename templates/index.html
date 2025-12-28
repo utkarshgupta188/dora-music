@@ -31,6 +31,9 @@
                 <button id="navFavorites" class="nav-btn">
                     <i class="fas fa-heart"></i> Favorites
                 </button>
+                <button id="navPlaylists" class="nav-btn">
+                    <i class="fas fa-folder"></i> Playlists
+                </button>
                 <button id="navQueue" class="nav-btn">
                     <i class="fas fa-list-ol"></i> Queue
                 </button>
@@ -69,6 +72,19 @@
                 <div id="favoritesContainer" class="results-grid"></div>
             </div>
 
+            <!-- Playlists View -->
+            <div id="playlistsView" class="view-section">
+                <header class="header">
+                    <h1>Your Playlists</h1>
+                    <button class="nav-btn active" id="createPlaylistBtn" style="padding: 0.5rem 1rem;">
+                        <i class="fas fa-plus"></i> New Playlist
+                    </button>
+                </header>
+                <!-- Shows list of playlists (folders) or tracks inside a playlist -->
+                <div id="playlistsContainer" class="results-grid"></div>
+                <div id="playlistTracksContainer" class="results-grid" style="display: none;"></div>
+            </div>
+
             <!-- Queue View -->
             <div id="queueView" class="view-section">
                 <header class="header">
@@ -80,15 +96,30 @@
 
             <!-- Settings Modal (Simple overlay for now) -->
             <div id="settingsModal" class="modal">
-                <div class="modal-content glass-card">
+                <div class="modal-content glass-panel">
                     <span class="close-modal">&times;</span>
                     <h2>Audio Quality</h2>
-                    <div class="quality-options">
-                        <label><input type="radio" name="quality" value="320kbps"> High (320kbps)</label>
-                        <label><input type="radio" name="quality" value="160kbps"> Medium (160kbps)</label>
+                    <div class="settings-options">
+                        <label><input type="radio" name="quality" value="320kbps"> High Fidelity (320kbps)</label>
+                        <label><input type="radio" name="quality" value="160kbps"> Balanced (160kbps)</label>
                         <label><input type="radio" name="quality" value="96kbps"> Standard (96kbps)</label>
                         <label><input type="radio" name="quality" value="48kbps"> Data Saver (48kbps)</label>
-                        <label><input type="radio" name="quality" value="12kbps"> Low (12kbps)</label>
+                        <label><input type="radio" name="quality" value="12kbps"> Low Data (12kbps)</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add to Playlist Modal -->
+            <div id="addToPlaylistModal" class="modal">
+                <div class="modal-content glass-panel">
+                    <span class="close-modal" id="closePlaylistModal">&times;</span>
+                    <h2>Add to Playlist</h2>
+                    <ul id="playlistList" class="playlist-list">
+                        <!-- Populated by JS -->
+                    </ul>
+                    <div class="create-new-playlist-container">
+                        <input type="text" id="newPlaylistName" placeholder="New Playlist Name">
+                        <button id="confirmCreatePlaylist" class="nav-btn active">Create</button>
                     </div>
                 </div>
             </div>
@@ -104,6 +135,9 @@
                 <div id="playerArtistName">-</div>
             </div>
             <button id="playerLikeBtn" class="action-btn"><i class="far fa-heart"></i></button>
+            <button id="playerAddBtn" class="action-btn" title="Add to Playlist" style="margin-left: 10px;">
+                <i class="fas fa-plus"></i>
+            </button>
         </div>
 
         <div class="player-center">
