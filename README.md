@@ -2,9 +2,6 @@
 
 A stunning, modern web-based music player featuring a beautiful Glassmorphism UI, infinite radio, and high-quality audio streaming.
 
-![Dora Music](static/default-album.png)
-*(Replace with a screenshot of your new UI)*
-
 ## ✨ Key Features
 
 *   **🎨 Modern Glassmorphism UI**: A visually striking interface with animated backgrounds, glass effects, and smooth transitions.
