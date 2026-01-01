@@ -771,10 +771,25 @@ body {
         width: 35px;
         height: 35px;
         margin: 0;
+        z-index: 100;
+        /* Ensure it's on top */
     }
 
     #playerLikeBtn {
-        display: none;
+        display: flex;
+        /* Show it on mobile */
+        position: absolute;
+        right: 40px;
+        /* To the left of Add Btn */
+        top: 50%;
+        transform: translateY(-50%);
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        width: 35px;
+        height: 35px;
+        margin: 0;
+        z-index: 100;
     }
 
     /* Middle Row: Progress */
@@ -1273,4 +1288,58 @@ body {
     background: rgba(255, 255, 255, 0.05);
     padding: 4px 10px;
     border-radius: 20px;
+}
+
+/* --- Create Playlist UI Refinement --- */
+.create-new-playlist-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--glass-border);
+    align-items: center;
+}
+
+.create-new-playlist-container input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    padding: 12px 16px;
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.create-new-playlist-container input:focus {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+.create-new-playlist-container button {
+    background: var(--primary-color);
+    color: var(--bg-dark);
+    border: none;
+    padding: 0 20px;
+    height: 42px;
+    /* Match input height roughly */
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-new-playlist-container button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color), 0.4);
+    filter: brightness(1.1);
+}
+
+.create-new-playlist-container button:active {
+    transform: translateY(0);
 }

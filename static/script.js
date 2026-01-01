@@ -133,6 +133,24 @@ function setupNavigation() {
                 dynSettings.style.setProperty('display', 'none', 'important');
             }
         }
+        // Player Buttons (Delegated)
+        else if (btn.id === 'playerLikeBtn' || btn.closest('#playerLikeBtn')) {
+            console.log("Delegated: Like Clicked");
+            if (!state.currentPlaylist[state.currentTrackIndex]) {
+                showToast("Play a track first!", 'play-circle');
+            } else {
+                toggleLike();
+            }
+        }
+        else if (btn.id === 'playerAddBtn' || btn.closest('#playerAddBtn')) {
+            console.log("Delegated: Add Clicked");
+            const currentTrack = state.currentPlaylist[state.currentTrackIndex];
+            if (currentTrack) {
+                showAddToPlaylistModal(currentTrack);
+            } else {
+                showToast("Play a track first!", 'play-circle');
+            }
+        }
     });
 }
 
@@ -485,14 +503,9 @@ function setupPlayerListeners() {
         player.audio.currentTime = 0; // Simple prev for now
     });
 
-    player.likeBtn.addEventListener('click', toggleLike);
-
-    player.addBtn.addEventListener('click', () => {
-        const currentTrack = state.currentPlaylist[state.currentTrackIndex];
-        if (currentTrack) {
-            showAddToPlaylistModal(currentTrack);
-        }
-    });
+    player.likeBtn.addEventListener('click', (e) => e.stopPropagation());
+    player.addBtn.addEventListener('click', (e) => e.stopPropagation());
+    // Logic moved to delegation in setupNavigation to ensure it always fires
 }
 
 function togglePlay() {
@@ -632,6 +645,56 @@ function updateLikeButton(trackId) {
 
 function renderFavorites() {
     displayResults(state.favorites, favoritesContainer);
+
+    // Toggle Download All Button
+    const dlBtn = document.getElementById('downloadFavoritesBtn');
+    if (dlBtn) {
+        if (state.favorites.length > 0) {
+            dlBtn.style.display = 'flex';
+        } else {
+            dlBtn.style.display = 'none';
+        }
+    }
+}
+
+// Setup Download Favorites Listener
+const downloadFavoritesBtn = document.getElementById('downloadFavoritesBtn');
+if (downloadFavoritesBtn) {
+    downloadFavoritesBtn.addEventListener('click', () => {
+        if (state.favorites.length === 0) return;
+
+        // Reuse existing modal logic (similar to playlist download)
+        downloadCountSpan.textContent = state.favorites.length;
+        downloadConfirmModal.classList.add('active');
+
+        const handleConfirm = () => {
+            showToast(`Starting download of ${state.favorites.length} favorites...`, 'layer-group');
+            downloadAll(state.favorites);
+            downloadConfirmModal.classList.remove('active');
+            cleanup();
+        };
+
+        const handleClose = () => {
+            downloadConfirmModal.classList.remove('active');
+            cleanup();
+        }
+
+        const cleanup = () => {
+            confirmDownloadBtn.removeEventListener('click', handleConfirm);
+            cancelDownloadBtn.removeEventListener('click', handleClose);
+            closeDownloadModal.removeEventListener('click', handleClose);
+            downloadConfirmModal.removeEventListener('click', outsideClick);
+        }
+
+        const outsideClick = (e) => {
+            if (e.target === downloadConfirmModal) handleClose();
+        };
+
+        confirmDownloadBtn.addEventListener('click', handleConfirm);
+        cancelDownloadBtn.addEventListener('click', handleClose);
+        closeDownloadModal.addEventListener('click', handleClose);
+        downloadConfirmModal.addEventListener('click', outsideClick);
+    });
 }
 
 // --- Settings ---
@@ -933,6 +996,16 @@ async function downloadAll(tracks) {
 
 function showAddToPlaylistModal(track) {
     trackToAddToPlaylist = track;
+
+    // Smart Add: Check if only 1 playlist exists
+    const playlistNames = Object.keys(state.playlists);
+    if (playlistNames.length === 1) {
+        const onlyPlaylist = playlistNames[0];
+        console.log(`Smart Add: Automatically adding to "${onlyPlaylist}"`);
+        addToPlaylist(onlyPlaylist, track);
+        return;
+    }
+
     renderPlaylistOptions();
     addToPlaylistModal.classList.add('active');
 }
