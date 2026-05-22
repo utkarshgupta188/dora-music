@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Search</title>
+    <title>Dora Music</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ range(1, 10000) | random }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -48,6 +48,22 @@
                     <i class="fas fa-cog"></i> <span>Quality</span>
                 </button>
             </div>
+
+            <!-- Theme Switcher -->
+            <div class="theme-switcher">
+                <span class="theme-label">Theme</span>
+                <div class="theme-dots">
+                    <button class="theme-dot gold active" data-theme="gold" title="Gold"></button>
+                    <button class="theme-dot purple" data-theme="purple" title="Purple"></button>
+                    <button class="theme-dot cyan" data-theme="cyan" title="Cyan"></button>
+                    <button class="theme-dot pink" data-theme="pink" title="Rose"></button>
+                </div>
+            </div>
+
+            <!-- Keyboard Shortcuts Hint -->
+            <button id="shortcutsHintBtn" class="shortcuts-hint-btn">
+                <i class="fas fa-keyboard"></i> <span>Shortcuts</span>
+            </button>
         </nav>
 
         <!-- Main Content Area -->
@@ -56,42 +72,65 @@
             <div id="homeView" class="view-section active">
                 <header class="header">
                     <h1>Discover Music</h1>
+                    <!-- Language Tabs -->
+                    <div class="language-tabs" id="languageTabs">
+                        <button class="lang-tab active" data-lang="all">🌍 All</button>
+                        <button class="lang-tab" data-lang="hindi">🇮🇳 Hindi</button>
+                        <button class="lang-tab" data-lang="english">🌐 English</button>
+                        <button class="lang-tab" data-lang="punjabi">🎵 Punjabi</button>
+                        <button class="lang-tab" data-lang="tamil">🎶 Tamil</button>
+                        <button class="lang-tab" data-lang="telugu">🎸 Telugu</button>
+                    </div>
                 </header>
 
                 <!-- Discover Dashboard Section -->
                 <div id="discoverSection">
+                    <!-- Continue Listening -->
+                    <div class="discover-section" id="continueListeningSection" style="display:none">
+                        <h2 class="section-title"><i class="fas fa-play-circle" style="color:var(--primary-color);margin-right:0.5rem"></i> Continue Listening</h2>
+                        <div class="artists-scroll-container">
+                            <div id="continueListeningContainer" class="recent-track-row"></div>
+                        </div>
+                    </div>
+
+                    <!-- Recently Played -->
+                    <div class="discover-section" id="recentlyPlayedSection" style="display:none">
+                        <h2 class="section-title"><i class="fas fa-history" style="color:var(--primary-color);margin-right:0.5rem"></i> Recently Played</h2>
+                        <div class="artists-scroll-container">
+                            <div id="recentlyPlayedContainer" class="recent-track-row"></div>
+                        </div>
+                    </div>
+
                     <!-- Featured Artists Section -->
                     <div class="discover-section">
                         <h2 class="section-title"><i class="fas fa-users" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Featured Artists</h2>
                         <div class="artists-scroll-container">
-                            <div id="discoverArtists" class="artists-row">
-                                <!-- Populated dynamically by JS -->
-                            </div>
+                            <div id="discoverArtists" class="artists-row"></div>
                         </div>
                     </div>
 
                     <!-- Trending Hits Section -->
                     <div class="discover-section">
                         <h2 class="section-title"><i class="fas fa-fire" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Trending Hits</h2>
-                        <div id="discoverSongs" class="results-grid">
-                            <!-- Populated dynamically by JS -->
-                        </div>
+                        <div id="discoverSongs" class="results-grid"></div>
+                    </div>
+
+                    <!-- New Releases Section -->
+                    <div class="discover-section">
+                        <h2 class="section-title"><i class="fas fa-star" style="color: var(--primary-color); margin-right: 0.5rem;"></i> New Releases</h2>
+                        <div id="discoverNewReleases" class="results-grid"></div>
                     </div>
 
                     <!-- Featured Albums Section -->
                     <div class="discover-section">
                         <h2 class="section-title"><i class="fas fa-record-vinyl" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Featured Albums</h2>
-                        <div id="discoverAlbums" class="results-grid">
-                            <!-- Populated dynamically by JS -->
-                        </div>
+                        <div id="discoverAlbums" class="results-grid"></div>
                     </div>
 
                     <!-- Curated Playlists Section -->
                     <div class="discover-section">
                         <h2 class="section-title"><i class="fas fa-music" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Curated Playlists</h2>
-                        <div id="discoverPlaylists" class="results-grid">
-                            <!-- Populated dynamically by JS -->
-                        </div>
+                        <div id="discoverPlaylists" class="results-grid"></div>
                     </div>
                 </div>
             </div>
@@ -100,9 +139,11 @@
             <div id="searchView" class="view-section" style="display: none;">
                 <header class="header">
                     <h1>Search</h1>
-                    <div class="search-box">
+                    <div class="search-box" style="position:relative">
                         <i class="fas fa-search" id="searchBtn" style="cursor: pointer;"></i>
-                        <input type="text" id="searchInput" placeholder="Search for songs, albums, playlists, artists...">
+                        <input type="text" id="searchInput" placeholder="Search for songs, albums, playlists, artists..." autocomplete="off">
+                        <!-- Autocomplete Dropdown -->
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
                     </div>
                     <div id="searchFilterPills" class="search-filter-pills" style="display: none;">
                         <button class="filter-pill active" data-filter="all">All</button>
@@ -125,9 +166,7 @@
                     <!-- Recent Searches -->
                     <div class="discover-section" id="recentSearchesContainer" style="display: none;">
                         <h2 class="section-title"><i class="fas fa-history" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Recent Searches</h2>
-                        <div id="recentSearchesList" class="recent-searches-list">
-                            <!-- Populated dynamically by JS -->
-                        </div>
+                        <div id="recentSearchesList" class="recent-searches-list"></div>
                     </div>
 
                     <!-- Browse All Moods -->
@@ -144,7 +183,7 @@
                             </div>
                             <div class="mood-card chill" data-query="Chill">
                                 <i class="fas fa-couch"></i>
-                                <span>Chill & Lo-Fi</span>
+                                <span>Chill &amp; Lo-Fi</span>
                             </div>
                             <div class="mood-card workout" data-query="Workout">
                                 <i class="fas fa-dumbbell"></i>
@@ -156,7 +195,7 @@
                             </div>
                             <div class="mood-card sad" data-query="Sad">
                                 <i class="fas fa-cloud-showers-heavy"></i>
-                                <span>Sad & Soulful</span>
+                                <span>Sad &amp; Soulful</span>
                             </div>
                         </div>
                     </div>
@@ -170,8 +209,7 @@
             <div id="favoritesView" class="view-section">
                 <header class="header">
                     <h1>Your Library</h1>
-                    <button id="downloadFavoritesBtn" class="primary-action-btn"
-                        style="padding: 0.5rem 1rem; display: none;">
+                    <button id="downloadFavoritesBtn" class="primary-action-btn" style="padding: 0.5rem 1rem; display: none;">
                         <i class="fas fa-download"></i> Download All
                     </button>
                 </header>
@@ -182,11 +220,19 @@
             <div id="playlistsView" class="view-section">
                 <header class="header">
                     <h1>Your Playlists</h1>
-                    <button class="nav-btn active" id="createPlaylistBtn" style="padding: 0.5rem 1rem;">
-                        <i class="fas fa-plus"></i> New Playlist
-                    </button>
+                    <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+                        <button class="nav-btn active" id="createPlaylistBtn" style="padding: 0.5rem 1rem;">
+                            <i class="fas fa-plus"></i> New Playlist
+                        </button>
+                        <button class="nav-btn" id="importPlaylistBtn" style="padding: 0.5rem 1rem;" title="Import playlist from JSON">
+                            <i class="fas fa-file-import"></i> Import
+                        </button>
+                        <input type="file" id="importPlaylistInput" accept=".json" style="display:none">
+                    </div>
                 </header>
-                <!-- Shows list of playlists (folders) or tracks inside a playlist -->
+                <!-- Smart Playlists (auto-generated from favorites) -->
+                <div id="smartPlaylistsContainer" class="smart-playlists-row"></div>
+                <!-- User Playlists -->
                 <div id="playlistsContainer" class="results-grid"></div>
                 <div id="playlistTracksContainer" class="results-grid" style="display: none;"></div>
             </div>
@@ -195,7 +241,7 @@
             <div id="queueView" class="view-section">
                 <header class="header">
                     <h1>Current Queue</h1>
-                    <p style="color: var(--text-secondary); font-size: 0.9rem;">History & Next Up</p>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">History &amp; Next Up</p>
                 </header>
                 <div id="queueContainer" class="results-grid"></div>
             </div>
@@ -213,6 +259,11 @@
                             <h1 id="artistHeaderName">Artist Name</h1>
                             <p id="artistFollowers" class="followers-count"><i class="fas fa-users"></i> 0 Followers</p>
                             <p id="artistBio" class="artist-bio">Biography info here...</p>
+                            <div style="display:flex;gap:0.75rem;margin-top:0.75rem;flex-wrap:wrap">
+                                <button id="artistRadioBtn" class="primary-action-btn" style="padding:0.5rem 1.2rem;font-size:0.9rem">
+                                    <i class="fas fa-broadcast-tower"></i> Artist Radio
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -220,21 +271,17 @@
                 <!-- Top Songs Section -->
                 <div class="discover-section">
                     <h2 class="section-title"><i class="fas fa-music" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Top Songs</h2>
-                    <div id="artistSongs" class="results-grid">
-                        <!-- Populated dynamically by JS -->
-                    </div>
+                    <div id="artistSongs" class="results-grid"></div>
                 </div>
 
                 <!-- Albums Section -->
                 <div class="discover-section">
                     <h2 class="section-title"><i class="fas fa-compact-disc" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Albums</h2>
-                    <div id="artistAlbums" class="results-grid">
-                        <!-- Populated dynamically by JS -->
-                    </div>
+                    <div id="artistAlbums" class="results-grid"></div>
                 </div>
             </div>
 
-            <!-- Settings Modal (Simple overlay for now) -->
+            <!-- Settings Modal -->
             <div id="settingsModal" class="modal">
                 <div class="modal-content glass-panel">
                     <span class="close-modal">&times;</span>
@@ -242,39 +289,35 @@
                     <div class="quality-grid">
                         <div class="quality-card active" data-value="320kbps">
                             <i class="fas fa-wifi"></i>
-                            <div class="quality-info">
-                                <h3>High Fidelity</h3>
-                                <p>320kbps</p>
-                            </div>
+                            <div class="quality-info"><h3>High Fidelity</h3><p>320kbps</p></div>
                         </div>
                         <div class="quality-card" data-value="160kbps">
                             <i class="fas fa-signal"></i>
-                            <div class="quality-info">
-                                <h3>Balanced</h3>
-                                <p>160kbps</p>
-                            </div>
+                            <div class="quality-info"><h3>Balanced</h3><p>160kbps</p></div>
                         </div>
                         <div class="quality-card" data-value="96kbps">
                             <i class="fas fa-compress-arrows-alt"></i>
-                            <div class="quality-info">
-                                <h3>Standard</h3>
-                                <p>96kbps</p>
-                            </div>
+                            <div class="quality-info"><h3>Standard</h3><p>96kbps</p></div>
                         </div>
                         <div class="quality-card" data-value="48kbps">
                             <i class="fas fa-database"></i>
-                            <div class="quality-info">
-                                <h3>Data Saver</h3>
-                                <p>48kbps</p>
-                            </div>
+                            <div class="quality-info"><h3>Data Saver</h3><p>48kbps</p></div>
                         </div>
                         <div class="quality-card" data-value="12kbps">
                             <i class="fas fa-battery-quarter"></i>
-                            <div class="quality-info">
-                                <h3>Low Data</h3>
-                                <p>12kbps</p>
-                            </div>
+                            <div class="quality-info"><h3>Low Data</h3><p>12kbps</p></div>
                         </div>
+                    </div>
+                    <!-- Crossfade Setting -->
+                    <div class="settings-row">
+                        <div>
+                            <h3 style="font-size:1rem;margin-bottom:0.25rem">Crossfade</h3>
+                            <p style="font-size:0.8rem;color:var(--text-secondary)">Smooth ~3s fade between tracks</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="crossfadeToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -284,9 +327,7 @@
                 <div class="modal-content glass-panel">
                     <span class="close-modal" id="closePlaylistModal">&times;</span>
                     <h2>Add to Playlist</h2>
-                    <ul id="playlistList" class="playlist-list">
-                        <!-- Populated by JS -->
-                    </ul>
+                    <ul id="playlistList" class="playlist-list"></ul>
                     <div class="create-new-playlist-container">
                         <input type="text" id="newPlaylistName" placeholder="New Playlist Name">
                         <button id="confirmCreatePlaylist" class="nav-btn active">Create</button>
@@ -300,23 +341,56 @@
                     <span class="close-modal" id="closeDownloadModal">&times;</span>
                     <h2 style="margin-bottom: 1rem;"><i class="fas fa-file-download"></i> Download All?</h2>
                     <p style="margin-bottom: 1.5rem; color: var(--text-secondary); line-height: 1.5;">
-                        You are about to download <span id="downloadCount"
-                            style="color: var(--primary-color); font-weight: bold;">0</span> tracks.
+                        You are about to download <span id="downloadCount" style="color: var(--primary-color); font-weight: bold;">0</span> tracks.
                         <br><br>
                         <i class="fas fa-exclamation-circle"></i> <strong>Important:</strong><br>
-                        Your browser might ask for permission to download multiple files. Please click
-                        <strong>"Allow"</strong>.
+                        Your browser might ask for permission to download multiple files. Please click <strong>"Allow"</strong>.
                     </p>
                     <div style="display: flex; gap: 1rem; justify-content: center;">
-                        <button id="cancelDownloadBtn" class="nav-btn"
-                            style="border: 1px solid var(--glass-border);">Cancel</button>
-                        <button id="confirmDownloadBtn" class="primary-action-btn" style="width: auto;">Start
-                            Download</button>
+                        <button id="cancelDownloadBtn" class="nav-btn" style="border: 1px solid var(--glass-border);">Cancel</button>
+                        <button id="confirmDownloadBtn" class="primary-action-btn" style="width: auto;">Start Download</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keyboard Shortcuts Modal -->
+            <div id="shortcutsModal" class="modal">
+                <div class="modal-content glass-panel shortcuts-modal-content">
+                    <span class="close-modal" id="closeShortcutsModal">&times;</span>
+                    <h2><i class="fas fa-keyboard" style="color:var(--primary-color);margin-right:0.5rem"></i> Keyboard Shortcuts</h2>
+                    <div class="shortcuts-grid">
+                        <div class="shortcut-item"><kbd>Space</kbd><span>Play / Pause</span></div>
+                        <div class="shortcut-item"><kbd>N</kbd><span>Next Track</span></div>
+                        <div class="shortcut-item"><kbd>P</kbd><span>Previous Track</span></div>
+                        <div class="shortcut-item"><kbd>←</kbd><span>Seek back 5s</span></div>
+                        <div class="shortcut-item"><kbd>→</kbd><span>Seek forward 5s</span></div>
+                        <div class="shortcut-item"><kbd>↑</kbd><span>Volume up 10%</span></div>
+                        <div class="shortcut-item"><kbd>↓</kbd><span>Volume down 10%</span></div>
+                        <div class="shortcut-item"><kbd>L</kbd><span>Like / Unlike track</span></div>
+                        <div class="shortcut-item"><kbd>S</kbd><span>Toggle Shuffle</span></div>
+                        <div class="shortcut-item"><kbd>R</kbd><span>Toggle Repeat</span></div>
+                        <div class="shortcut-item"><kbd>T</kbd><span>Cycle Sleep Timer</span></div>
+                        <div class="shortcut-item"><kbd>?</kbd><span>Show this guide</span></div>
+                        <div class="shortcut-item"><kbd>Esc</kbd><span>Close panels</span></div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
+
+    <!-- Lyrics Panel (slides up above player) -->
+    <div id="lyricsPanel" class="lyrics-panel">
+        <div class="lyrics-panel-header">
+            <span id="lyricsPanelTitle">Lyrics</span>
+            <button id="closeLyricsBtn" class="action-btn"><i class="fas fa-chevron-down"></i></button>
+        </div>
+        <div id="lyricsContent" class="lyrics-content">
+            <p class="lyrics-placeholder"><i class="fas fa-music"></i> Play a track to see lyrics</p>
+        </div>
+    </div>
+
+    <!-- Visualizer Canvas -->
+    <canvas id="visualizerCanvas" class="visualizer-canvas"></canvas>
 
     <!-- Modern Glass Player -->
     <div class="music-player-glass" id="musicPlayer">
@@ -337,11 +411,11 @@
 
         <div class="player-center">
             <div class="player-controls">
-                <!-- <button class="control-btn sm"><i class="fas fa-random"></i></button> -->
+                <button id="shuffleButton" class="control-btn sm shuffle-btn" title="Shuffle (S)"><i class="fas fa-random"></i></button>
                 <button id="prevButton" class="control-btn"><i class="fas fa-step-backward"></i></button>
                 <button id="playPauseButton" class="control-btn main-play"><i class="fas fa-play"></i></button>
                 <button id="nextButton" class="control-btn"><i class="fas fa-step-forward"></i></button>
-                <!-- <button class="control-btn sm"><i class="fas fa-redo"></i></button> -->
+                <button id="repeatButton" class="control-btn sm repeat-btn" title="Repeat (R)"><i class="fas fa-redo"></i></button>
             </div>
             <div class="progress-wrapper">
                 <span id="currentTime">0:00</span>
@@ -356,9 +430,56 @@
         <div class="player-right">
             <i class="fas fa-volume-up"></i>
             <input type="range" id="volumeSlider" min="0" max="100" value="100">
+            <button id="sleepTimerBtn" class="action-btn sleep-timer-btn" title="Sleep Timer (T)">
+                <i class="fas fa-moon"></i>
+                <span id="sleepTimerBadge" class="sleep-timer-badge" style="display:none"></span>
+            </button>
+            <button id="lyricsBtn" class="action-btn" title="Lyrics">
+                <i class="fas fa-align-left"></i>
+            </button>
         </div>
 
-        <audio id="audioPlayer"></audio>
+        <audio id="audioPlayer" crossorigin="anonymous"></audio>
+    </div>
+
+    <!-- Desktop Now Playing Overlay -->
+    <div id="nowPlayingOverlay" class="now-playing-overlay">
+        <div class="now-playing-bg" id="nowPlayingBg"></div>
+        <button class="now-playing-close" id="closeNowPlaying"><i class="fas fa-chevron-down"></i></button>
+        <div class="now-playing-content">
+            <div class="np-left">
+                <img id="npAlbumArt" src="/static/default-album.png" alt="Album Art" class="np-album-art">
+                <div class="np-track-info">
+                    <div id="npTrackName" class="np-track-name">No track</div>
+                    <div id="npArtistName" class="np-artist-name">-</div>
+                    <div class="np-actions">
+                        <button id="npLikeBtn" class="action-btn" style="font-size:1.4rem"><i class="far fa-heart"></i></button>
+                        <button id="npAddBtn" class="action-btn" style="font-size:1.2rem"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="np-controls">
+                    <button id="npShuffleBtn" class="control-btn sm shuffle-btn"><i class="fas fa-random"></i></button>
+                    <button id="npPrevBtn" class="control-btn"><i class="fas fa-step-backward"></i></button>
+                    <button id="npPlayPauseBtn" class="control-btn main-play"><i class="fas fa-play"></i></button>
+                    <button id="npNextBtn" class="control-btn"><i class="fas fa-step-forward"></i></button>
+                    <button id="npRepeatBtn" class="control-btn sm repeat-btn"><i class="fas fa-redo"></i></button>
+                </div>
+                <div class="np-progress-row">
+                    <span id="npCurrentTime">0:00</span>
+                    <div class="progress-bar-container np-seek-bar">
+                        <div class="progress-fill" id="npProgress"></div>
+                        <input type="range" class="seek-slider" id="npSeekSlider" min="0" value="0">
+                    </div>
+                    <span id="npDuration">0:00</span>
+                </div>
+            </div>
+            <div class="np-right">
+                <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem;color:var(--text-secondary)"><i class="fas fa-align-left" style="margin-right:0.5rem"></i>Lyrics</h3>
+                <div id="npLyricsContent" class="np-lyrics-content">
+                    <p class="lyrics-placeholder"><i class="fas fa-music"></i> Play a track to see lyrics</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="toast-container"></div>
@@ -372,6 +493,7 @@
             });
         }
     </script>
+
 </body>
 
 </html>

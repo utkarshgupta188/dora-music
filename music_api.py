@@ -3,6 +3,14 @@ import requests
 # API Configuration
 MUSIC_API_BASE = "https://hehe-jet-beta.vercel.app/api"
 
+def _clean_image_url(url):
+    if not url or not isinstance(url, str):
+        return '/static/default-album.png'
+    url = url.strip()
+    if (url.startswith('http://') or url.startswith('https://') or url.startswith('/')) and not url.startswith('<!doctype') and not 'html' in url.lower():
+        return url
+    return '/static/default-album.png'
+
 def search_tracks(query, page=0, limit=5):
     """Search for tracks using Music API"""
     try:
@@ -20,7 +28,7 @@ def search_tracks(query, page=0, limit=5):
         if data.get('success') and data.get('data', {}).get('results'):
             for track in data['data']['results']:
                 # Get the highest quality image and download URL
-                image_url = next((img['url'] for img in reversed(track.get('image', []))), '')
+                image_url = _clean_image_url(next((img['url'] for img in reversed(track.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                 download_url = next((url['url'] for url in reversed(track.get('downloadUrl', []))), '')
                 
                 # Extract both ID formats that might be present
@@ -223,8 +231,8 @@ def _parse_song_payload(track):
         download_url = next((u['url'] for u in reversed(track.get('downloadUrl', []))
                            if isinstance(u, dict) and u.get('url')), '')
         
-        image_url = next((img['url'] for img in reversed(track.get('image', []))
-                        if isinstance(img, dict) and img.get('url')), '')
+        image_url = _clean_image_url(next((img['url'] for img in reversed(track.get('image', []))
+                        if isinstance(img, dict) and img.get('url')), ''))
 
         # Get artist names
         artists = track.get('artists', {})
@@ -293,7 +301,7 @@ def search_albums(query, limit=6):
         albums = []
         if data.get('success') and data.get('data', {}).get('results'):
             for album in data['data']['results']:
-                image_url = next((img['url'] for img in reversed(album.get('image', [])) if img.get('url')), '')
+                image_url = _clean_image_url(next((img['url'] for img in reversed(album.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                 
                 # Retrieve artist name robustly
                 artists_data = album.get('artists', {})
@@ -331,7 +339,7 @@ def search_playlists(query, limit=6):
         playlists = []
         if data.get('success') and data.get('data', {}).get('results'):
             for pl in data['data']['results']:
-                image_url = next((img['url'] for img in reversed(pl.get('image', [])) if img.get('url')), '')
+                image_url = _clean_image_url(next((img['url'] for img in reversed(pl.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                 
                 desc_val = pl.get('description') or (f"{pl.get('songCount')} songs" if pl.get('songCount') else '')
                 
@@ -392,18 +400,27 @@ def get_playlist_tracks(playlist_id):
         print(f"Error fetching playlist tracks: {str(e)}")
         return []
 
-def get_discover_data():
-    """Get unified discovery dashboard data"""
+def get_discover_data(language=None):
+    """Get unified discovery dashboard data, optionally filtered by language"""
+    lang_prefix = ""
+    if language and language.strip().lower() != 'all':
+        lang_prefix = f"{language.strip().capitalize()} "
+
     # 1. Fetch trending songs (Top Hits)
-    trending_songs = search_tracks("Top Hits", limit=8)
+    trending_songs = search_tracks(f"{lang_prefix}Top Hits", limit=8)
     
     # 2. Fetch featured albums (New Releases)
-    featured_albums = search_albums("New Releases", limit=6)
+    featured_albums = search_albums(f"{lang_prefix}New Releases", limit=6)
     
     # 3. Fetch featured playlists (Curated Playlists)
-    featured_playlists = search_playlists("Hits", limit=6)
+    featured_playlists = search_playlists(f"{lang_prefix}Hits", limit=6)
     
-    # 4. Return curated popular artists (real API IDs + fresh high-res images)
+    # 4. Fetch new releases specifically (Phase 2c)
+    new_releases = search_tracks(f"{lang_prefix}New 2025", limit=8)
+    if not new_releases:
+        new_releases = search_tracks(f"{lang_prefix}Latest", limit=8)
+    
+    # 5. Return curated popular artists (real API IDs + fresh high-res images)
     top_artists = [
         {'id': '459320', 'name': 'Arijit Singh', 'image': 'https://c.saavncdn.com/artists/Arijit_Singh_004_20241118063717_500x500.jpg'},
         {'id': '455130', 'name': 'Shreya Ghoshal', 'image': 'https://c.saavncdn.com/artists/Shreya_Ghoshal_007_20241101074144_500x500.jpg'},
@@ -417,6 +434,7 @@ def get_discover_data():
         'trending_songs': trending_songs,
         'featured_albums': featured_albums,
         'featured_playlists': featured_playlists,
+        'new_releases': new_releases,
         'top_artists': top_artists
     }
 
@@ -435,7 +453,7 @@ def search_artists(query, limit=6):
         artists = []
         if data.get('success') and data.get('data', {}).get('results'):
             for artist in data['data']['results']:
-                image_url = next((img['url'] for img in reversed(artist.get('image', [])) if img.get('url')), '')
+                image_url = _clean_image_url(next((img['url'] for img in reversed(artist.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                 artist_info = {
                     'id': str(artist.get('id', '')),
                     'name': str(artist.get('title', artist.get('name', ''))),
@@ -480,34 +498,34 @@ def search_all(query):
             # Albums
             if payload.get('albums', {}).get('results'):
                 for album in payload['albums']['results']:
-                    image_url = next((img['url'] for img in reversed(album.get('image', [])) if img.get('url')), '')
+                    image_url = _clean_image_url(next((img['url'] for img in reversed(album.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                     results['albums'].append({
                         'id': str(album.get('id', '')),
                         'name': str(album.get('name') or album.get('title') or 'Unknown Album'),
                         'artist': str(album.get('artist') or 'Various Artists'),
-                        'image': str(image_url or '/static/default-album.png'),
+                        'image': str(image_url),
                         'year': str(album.get('year', '')),
                         'type': 'album'
                     })
             # Playlists
             if payload.get('playlists', {}).get('results'):
                 for pl in payload['playlists']['results']:
-                    image_url = next((img['url'] for img in reversed(pl.get('image', [])) if img.get('url')), '')
+                    image_url = _clean_image_url(next((img['url'] for img in reversed(pl.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                     results['playlists'].append({
                         'id': str(pl.get('id', '')),
                         'name': str(pl.get('name') or pl.get('title') or 'Unknown Playlist'),
                         'description': str(pl.get('description') or ''),
-                        'image': str(image_url or '/static/default-album.png'),
+                        'image': str(image_url),
                         'type': 'playlist'
                     })
             # Artists
             if payload.get('artists', {}).get('results'):
                 for artist in payload['artists']['results']:
-                    image_url = next((img['url'] for img in reversed(artist.get('image', [])) if img.get('url')), '')
+                    image_url = _clean_image_url(next((img['url'] for img in reversed(artist.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                     results['artists'].append({
                         'id': str(artist.get('id', '')),
                         'name': str(artist.get('title', artist.get('name', ''))),
-                        'image': str(image_url or '/static/default-album.png'),
+                        'image': str(image_url),
                         'type': 'artist'
                     })
             
@@ -521,39 +539,39 @@ def search_all(query):
                             parsed['type'] = 'song'
                             results['topQuery'].append(parsed)
                     elif item_type == 'artist':
-                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        image_url = _clean_image_url(next((img['url'] for img in reversed(item.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                         results['topQuery'].append({
                             'id': str(item.get('id', '')),
                             'name': str(item.get('title', item.get('name', ''))),
-                            'image': str(image_url or '/static/default-album.png'),
+                            'image': str(image_url),
                             'description': str(item.get('description', 'Artist')),
                             'type': 'artist'
                         })
                     elif item_type == 'album':
-                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        image_url = _clean_image_url(next((img['url'] for img in reversed(item.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                         results['topQuery'].append({
                             'id': str(item.get('id', '')),
                             'name': str(item.get('title', item.get('name', ''))),
                             'artist': str(item.get('artist') or item.get('description') or 'Various Artists'),
-                            'image': str(image_url or '/static/default-album.png'),
+                            'image': str(image_url),
                             'description': str(item.get('description', 'Album')),
                             'type': 'album'
                         })
                     elif item_type == 'playlist':
-                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        image_url = _clean_image_url(next((img['url'] for img in reversed(item.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                         results['topQuery'].append({
                             'id': str(item.get('id', '')),
                             'name': str(item.get('title', item.get('name', ''))),
-                            'image': str(image_url or '/static/default-album.png'),
+                            'image': str(image_url),
                             'description': str(item.get('description', 'Playlist')),
                             'type': 'playlist'
                         })
                     else:
-                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        image_url = _clean_image_url(next((img['url'] for img in reversed(item.get('image', [])) if isinstance(img, dict) and img.get('url')), ''))
                         results['topQuery'].append({
                             'id': str(item.get('id', '')),
                             'name': str(item.get('title', item.get('name', ''))),
-                            'image': str(image_url or '/static/default-album.png'),
+                            'image': str(image_url),
                             'description': str(item.get('description') or item_type or ''),
                             'type': str(item_type or 'unknown')
                         })
@@ -622,8 +640,8 @@ def get_artist_details(artist_id):
             data = res_data['data']
             
             # Extract high-res image
-            image_url = next((img['url'] for img in reversed(data.get('image', []))
-                            if isinstance(img, dict) and img.get('url')), '/static/default-album.png')
+            image_url = _clean_image_url(next((img['url'] for img in reversed(data.get('image', []))
+                            if isinstance(img, dict) and img.get('url')), ''))
             
             # Top songs parsing
             top_songs = []
@@ -635,8 +653,8 @@ def get_artist_details(artist_id):
             # Top albums parsing
             top_albums = []
             for album in data.get('topAlbums', []):
-                album_img = next((img['url'] for img in reversed(album.get('image', []))
-                                if isinstance(img, dict) and img.get('url')), '/static/default-album.png')
+                album_img = _clean_image_url(next((img['url'] for img in reversed(album.get('image', []))
+                                if isinstance(img, dict) and img.get('url')), ''))
                 top_albums.append({
                     'id': str(album.get('id', '')),
                     'name': str(album.get('name') or album.get('title') or 'Unknown Album'),

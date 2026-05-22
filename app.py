@@ -26,10 +26,163 @@ def search():
 @app.route('/api/discover')
 def discover():
     try:
-        data = get_discover_data()
+        language = request.args.get('language', '')
+        data = get_discover_data(language)
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+def clean_metadata(text):
+    if not text:
+        return ""
+    # Remove text in parentheses or brackets (like (feat. ...), (From "..."), [Official Video], etc.)
+    text = re.sub(r'\(feat\..*?\)', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\[.*?\]', '', text)
+    text = re.sub(r'\(.*?\)', '', text)
+    text = re.sub(r'-.*?mix', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'remix', '', text, flags=re.IGNORECASE)
+    # Remove extra spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+@app.route('/api/lyrics')
+def get_lyrics():
+    artist = request.args.get('artist', '')
+    title = request.args.get('title', '')
+    if not artist or not title:
+        return jsonify({'error': 'Artist and title parameters are required'}), 400
+    
+    # Pre-clean metadata
+    clean_artist = clean_metadata(artist)
+    clean_title = clean_metadata(title)
+    
+    if not clean_artist:
+        clean_artist = artist
+    if not clean_title:
+        clean_title = title
+
+    headers = {
+        "User-Agent": "DoraMusic/1.0.0 (https://github.com/utkarshgupta188/dora-music)"
+    }
+    
+    lyrics_text = None
+    
+    # Attempt 1: LRCLib API
+    try:
+        # Step A: Direct metadata matching on LRCLib Search
+        lrclib_url = "https://lrclib.net/api/search"
+        params_specific = {
+            "track_name": clean_title,
+            "artist_name": clean_artist
+        }
+        response = requests.get(lrclib_url, params=params_specific, headers=headers, timeout=5)
+        
+        if response.status_code == 200:
+            results = response.json()
+            if results:
+                for res in results:
+                    if res.get('plainLyrics'):
+                        lyrics_text = res['plainLyrics']
+                        break
+                    elif res.get('syncedLyrics'):
+                        # Convert synced LRC format to clean readable lines
+                        synced = res['syncedLyrics']
+                        cleaned = re.sub(r'\[\d{2}:\d{2}\.\d{2,3}\]', '', synced)
+                        cleaned_lines = []
+                        for line in cleaned.split('\n'):
+                            line = line.strip()
+                            if line and not re.match(r'^\[[a-zA-Z]+:.*?\]$', line):
+                                cleaned_lines.append(line)
+                        lyrics_text = '\n'.join(cleaned_lines)
+                        break
+
+        # Step B: Fallback to a broader search query if specific fields didn't match
+        if not lyrics_text:
+            params_q = {
+                "q": f"{clean_artist} {clean_title}"
+            }
+            response = requests.get(lrclib_url, params=params_q, headers=headers, timeout=5)
+            if response.status_code == 200:
+                results = response.json()
+                if results:
+                    for res in results:
+                        if res.get('plainLyrics'):
+                            lyrics_text = res['plainLyrics']
+                            break
+                        elif res.get('syncedLyrics'):
+                            synced = res['syncedLyrics']
+                            cleaned = re.sub(r'\[\d{2}:\d{2}\.\d{2,3}\]', '', synced)
+                            cleaned_lines = []
+                            for line in cleaned.split('\n'):
+                                line = line.strip()
+                                if line and not re.match(r'^\[[a-zA-Z]+:.*?\]$', line):
+                                    cleaned_lines.append(line)
+                            lyrics_text = '\n'.join(cleaned_lines)
+                            break
+
+        # Step C: Fallback to searching title only and screening the top 5 results for artist
+        if not lyrics_text:
+            params_title = {
+                "q": clean_title
+            }
+            response = requests.get(lrclib_url, params=params_title, headers=headers, timeout=5)
+            if response.status_code == 200:
+                results = response.json()
+                if results:
+                    artist_keywords = [w.lower() for w in re.split(r'[\s,&-]+', clean_artist) if len(w) > 2]
+                    for res in results[:5]:
+                        res_artist = res.get('artistName', '').lower()
+                        match_found = False
+                        if clean_artist.lower() in res_artist or res_artist in clean_artist.lower():
+                            match_found = True
+                        elif artist_keywords and any(kw in res_artist for kw in artist_keywords):
+                            match_found = True
+                        
+                        if match_found:
+                            if res.get('plainLyrics'):
+                                lyrics_text = res['plainLyrics']
+                                break
+                            elif res.get('syncedLyrics'):
+                                synced = res['syncedLyrics']
+                                cleaned = re.sub(r'\[\d{2}:\d{2}\.\d{2,3}\]', '', synced)
+                                cleaned_lines = []
+                                for line in cleaned.split('\n'):
+                                    line = line.strip()
+                                    if line and not re.match(r'^\[[a-zA-Z]+:.*?\]$', line):
+                                        cleaned_lines.append(line)
+                                lyrics_text = '\n'.join(cleaned_lines)
+                                break
+
+        if lyrics_text:
+            return jsonify({'success': True, 'lyrics': lyrics_text})
+
+    except Exception as e:
+        print(f"Error searching LRCLib: {e}")
+
+    # Attempt 2: Fallback to lyrics.ovh with clean metadata
+    try:
+        url = f"https://api.lyrics.ovh/v1/{clean_artist}/{clean_title}"
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            lyrics_data = response.json()
+            if lyrics_data.get('lyrics'):
+                return jsonify({'success': True, 'lyrics': lyrics_data.get('lyrics', '')})
+    except Exception as e:
+        print(f"Error fetching from lyrics.ovh with cleaned params: {e}")
+
+    # Attempt 3: Final fallback to lyrics.ovh with original metadata
+    if clean_artist != artist or clean_title != title:
+        try:
+            url = f"https://api.lyrics.ovh/v1/{artist}/{title}"
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                lyrics_data = response.json()
+                if lyrics_data.get('lyrics'):
+                    return jsonify({'success': True, 'lyrics': lyrics_data.get('lyrics', '')})
+        except Exception as e:
+            print(f"Error fetching from lyrics.ovh with original params: {e}")
+
+    return jsonify({'success': False, 'error': 'Lyrics not found'}), 404
 
 @app.route('/api/search/all')
 def search_all_route():
