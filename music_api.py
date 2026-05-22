@@ -215,3 +215,464 @@ def get_recommendations(track_id, limit=20):
     except Exception as e:
         print(f"Error getting recommendations: {str(e)}")
         return []
+
+def _parse_song_payload(track):
+    """Common helper to parse song payload into a standard track dictionary"""
+    try:
+        # Get highest quality media URLs
+        download_url = next((u['url'] for u in reversed(track.get('downloadUrl', []))
+                           if isinstance(u, dict) and u.get('url')), '')
+        
+        image_url = next((img['url'] for img in reversed(track.get('image', []))
+                        if isinstance(img, dict) and img.get('url')), '')
+
+        # Get artist names
+        artists = track.get('artists', {})
+        primary_artists = artists.get('primary', []) if isinstance(artists, dict) else []
+        artist_names = [a['name'].replace('&amp;', '&') for a in primary_artists
+                      if isinstance(a, dict) and a.get('name')]
+        
+        if not artist_names:
+            if track.get('primaryArtists'):
+                artist_str = str(track.get('primaryArtists')).replace('&amp;', '&')
+            elif track.get('singers'):
+                artist_str = str(track.get('singers')).replace('&amp;', '&')
+            else:
+                artist_str = 'Unknown Artist'
+        else:
+            artist_str = ', '.join(artist_names)
+
+        # Get album name
+        album = track.get('album', {})
+        album_name = album.get('name', 'N/A') if isinstance(album, dict) else (album or 'N/A')
+
+        # Extract both ID formats that might be present
+        song_id = track.get('id', '')
+        song_token = track.get('song', {}).get('token', '') if isinstance(track.get('song'), dict) else ''
+        
+        song_name = track.get('name') or track.get('title') or 'Unknown Song'
+        
+        # Unescape HTML entities
+        import html
+        if isinstance(song_name, str):
+            song_name = html.unescape(song_name)
+        if isinstance(album_name, str):
+            album_name = html.unescape(album_name)
+        if isinstance(artist_str, str):
+            artist_str = html.unescape(artist_str)
+
+        return {
+            'id': str(song_token or song_id),
+            'name': str(song_name),
+            'artist': str(artist_str),
+            'album': str(album_name),
+            'duration': str(track.get('duration', '')),
+            'play_url': str(download_url),
+            'downloadUrls': track.get('downloadUrl', []),
+            'image': str(image_url or '/static/default-album.png'),
+            'language': str(track.get('language', '')),
+            'url': str(track.get('url', '')),
+            'mood': detect_mood(str(song_name), str(album_name))
+        }
+    except Exception as e:
+        print(f"Error parsing song payload: {e}")
+        return None
+
+def search_albums(query, limit=6):
+    """Search for albums using the Music API"""
+    try:
+        url = f"{MUSIC_API_BASE}/search/albums"
+        params = {
+            'query': query,
+            'limit': limit
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        albums = []
+        if data.get('success') and data.get('data', {}).get('results'):
+            for album in data['data']['results']:
+                image_url = next((img['url'] for img in reversed(album.get('image', [])) if img.get('url')), '')
+                
+                # Retrieve artist name robustly
+                artists_data = album.get('artists', {})
+                if isinstance(artists_data, dict) and artists_data.get('primary'):
+                    artist_name = ', '.join(a['name'] for a in artists_data['primary'] if isinstance(a, dict) and a.get('name'))
+                else:
+                    artist_name = str(album.get('artist') or 'Various Artists')
+                
+                album_info = {
+                    'id': str(album.get('id', '')),
+                    'name': str(album.get('name') or album.get('title') or 'Unknown Album'),
+                    'artist': artist_name,
+                    'image': str(image_url or '/static/default-album.png'),
+                    'year': str(album.get('year') or ''),
+                    'type': 'album'
+                }
+                albums.append(album_info)
+        return albums
+    except Exception as e:
+        print(f"Error searching albums: {str(e)}")
+        return []
+
+def search_playlists(query, limit=6):
+    """Search for playlists using the Music API"""
+    try:
+        url = f"{MUSIC_API_BASE}/search/playlists"
+        params = {
+            'query': query,
+            'limit': limit
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        playlists = []
+        if data.get('success') and data.get('data', {}).get('results'):
+            for pl in data['data']['results']:
+                image_url = next((img['url'] for img in reversed(pl.get('image', [])) if img.get('url')), '')
+                
+                desc_val = pl.get('description') or (f"{pl.get('songCount')} songs" if pl.get('songCount') else '')
+                
+                pl_info = {
+                    'id': str(pl.get('id', '')),
+                    'name': str(pl.get('name') or pl.get('title') or 'Unknown Playlist'),
+                    'description': str(desc_val or 'Playlist'),
+                    'image': str(image_url or '/static/default-album.png'),
+                    'type': 'playlist'
+                }
+                playlists.append(pl_info)
+        return playlists
+    except Exception as e:
+        print(f"Error searching playlists: {str(e)}")
+        return []
+
+def get_album_tracks(album_id):
+    """Get all songs in an album"""
+    try:
+        url = f"{MUSIC_API_BASE}/albums"
+        params = {
+            'id': album_id
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        tracks = []
+        if data.get('success') and data.get('data', {}).get('songs'):
+            for track in data['data']['songs']:
+                parsed = _parse_song_payload(track)
+                if parsed:
+                    tracks.append(parsed)
+        return tracks
+    except Exception as e:
+        print(f"Error fetching album tracks: {str(e)}")
+        return []
+
+def get_playlist_tracks(playlist_id):
+    """Get all songs in a playlist"""
+    try:
+        url = f"{MUSIC_API_BASE}/playlists"
+        params = {
+            'id': playlist_id
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        tracks = []
+        if data.get('success') and data.get('data', {}).get('songs'):
+            for track in data['data']['songs']:
+                parsed = _parse_song_payload(track)
+                if parsed:
+                    tracks.append(parsed)
+        return tracks
+    except Exception as e:
+        print(f"Error fetching playlist tracks: {str(e)}")
+        return []
+
+def get_discover_data():
+    """Get unified discovery dashboard data"""
+    # 1. Fetch trending songs (Top Hits)
+    trending_songs = search_tracks("Top Hits", limit=8)
+    
+    # 2. Fetch featured albums (New Releases)
+    featured_albums = search_albums("New Releases", limit=6)
+    
+    # 3. Fetch featured playlists (Curated Playlists)
+    featured_playlists = search_playlists("Hits", limit=6)
+    
+    # 4. Return curated popular artists
+    top_artists = [
+        {'id': 'arijit', 'name': 'Arijit Singh', 'image': 'https://c.saavncdn.com/artists/Arijit_Singh_007_20200819121253_150x150.jpg'},
+        {'id': 'shreya', 'name': 'Shreya Ghoshal', 'image': 'https://c.saavncdn.com/artists/Shreya_Ghoshal_150x150.jpg'},
+        {'id': 'atif', 'name': 'Atif Aslam', 'image': 'https://c.saavncdn.com/artists/Atif_Aslam_150x150.jpg'},
+        {'id': 'nehak', 'name': 'Neha Kakkar', 'image': 'https://c.saavncdn.com/artists/Neha_Kakkar_150x150.jpg'},
+        {'id': 'armaan', 'name': 'Armaan Malik', 'image': 'https://c.saavncdn.com/artists/Armaan_Malik_002_20210603094838_150x150.jpg'},
+        {'id': 'badshah', 'name': 'Badshah', 'image': 'https://c.saavncdn.com/artists/Badshah_150x150.jpg'}
+    ]
+    
+    return {
+        'trending_songs': trending_songs,
+        'featured_albums': featured_albums,
+        'featured_playlists': featured_playlists,
+        'top_artists': top_artists
+    }
+
+def search_artists(query, limit=6):
+    """Search for artists using the Music API"""
+    try:
+        url = f"{MUSIC_API_BASE}/search/artists"
+        params = {
+            'query': query,
+            'limit': limit
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        artists = []
+        if data.get('success') and data.get('data', {}).get('results'):
+            for artist in data['data']['results']:
+                image_url = next((img['url'] for img in reversed(artist.get('image', [])) if img.get('url')), '')
+                artist_info = {
+                    'id': str(artist.get('id', '')),
+                    'name': str(artist.get('title', artist.get('name', ''))),
+                    'image': str(image_url or '/static/default-album.png'),
+                    'type': 'artist'
+                }
+                artists.append(artist_info)
+        return artists
+    except Exception as e:
+        print(f"Error searching artists: {str(e)}")
+        return []
+
+def search_all(query):
+    """Perform a global unified search across songs, albums, playlists, and artists"""
+    try:
+        url = f"{MUSIC_API_BASE}/search"
+        params = {
+            'query': query
+        }
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        results = {
+            'songs': [],
+            'albums': [],
+            'playlists': [],
+            'artists': [],
+            'topQuery': [],
+            'sectionsOrder': []
+        }
+        
+        if data.get('success') and data.get('data'):
+            payload = data['data']
+            
+            # Songs
+            if payload.get('songs', {}).get('results'):
+                for track in payload['songs']['results']:
+                    parsed = _parse_song_payload(track)
+                    if parsed:
+                        results['songs'].append(parsed)
+            # Albums
+            if payload.get('albums', {}).get('results'):
+                for album in payload['albums']['results']:
+                    image_url = next((img['url'] for img in reversed(album.get('image', [])) if img.get('url')), '')
+                    results['albums'].append({
+                        'id': str(album.get('id', '')),
+                        'name': str(album.get('name') or album.get('title') or 'Unknown Album'),
+                        'artist': str(album.get('artist') or 'Various Artists'),
+                        'image': str(image_url or '/static/default-album.png'),
+                        'year': str(album.get('year', '')),
+                        'type': 'album'
+                    })
+            # Playlists
+            if payload.get('playlists', {}).get('results'):
+                for pl in payload['playlists']['results']:
+                    image_url = next((img['url'] for img in reversed(pl.get('image', [])) if img.get('url')), '')
+                    results['playlists'].append({
+                        'id': str(pl.get('id', '')),
+                        'name': str(pl.get('name') or pl.get('title') or 'Unknown Playlist'),
+                        'description': str(pl.get('description') or ''),
+                        'image': str(image_url or '/static/default-album.png'),
+                        'type': 'playlist'
+                    })
+            # Artists
+            if payload.get('artists', {}).get('results'):
+                for artist in payload['artists']['results']:
+                    image_url = next((img['url'] for img in reversed(artist.get('image', [])) if img.get('url')), '')
+                    results['artists'].append({
+                        'id': str(artist.get('id', '')),
+                        'name': str(artist.get('title', artist.get('name', ''))),
+                        'image': str(image_url or '/static/default-album.png'),
+                        'type': 'artist'
+                    })
+            
+            # Top Query
+            if payload.get('topQuery', {}).get('results'):
+                for item in payload['topQuery']['results']:
+                    item_type = item.get('type')
+                    if item_type == 'song':
+                        parsed = _parse_song_payload(item)
+                        if parsed:
+                            parsed['type'] = 'song'
+                            results['topQuery'].append(parsed)
+                    elif item_type == 'artist':
+                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        results['topQuery'].append({
+                            'id': str(item.get('id', '')),
+                            'name': str(item.get('title', item.get('name', ''))),
+                            'image': str(image_url or '/static/default-album.png'),
+                            'description': str(item.get('description', 'Artist')),
+                            'type': 'artist'
+                        })
+                    elif item_type == 'album':
+                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        results['topQuery'].append({
+                            'id': str(item.get('id', '')),
+                            'name': str(item.get('title', item.get('name', ''))),
+                            'artist': str(item.get('artist') or item.get('description') or 'Various Artists'),
+                            'image': str(image_url or '/static/default-album.png'),
+                            'description': str(item.get('description', 'Album')),
+                            'type': 'album'
+                        })
+                    elif item_type == 'playlist':
+                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        results['topQuery'].append({
+                            'id': str(item.get('id', '')),
+                            'name': str(item.get('title', item.get('name', ''))),
+                            'image': str(image_url or '/static/default-album.png'),
+                            'description': str(item.get('description', 'Playlist')),
+                            'type': 'playlist'
+                        })
+                    else:
+                        image_url = next((img['url'] for img in reversed(item.get('image', [])) if img.get('url')), '')
+                        results['topQuery'].append({
+                            'id': str(item.get('id', '')),
+                            'name': str(item.get('title', item.get('name', ''))),
+                            'image': str(image_url or '/static/default-album.png'),
+                            'description': str(item.get('description') or item_type or ''),
+                            'type': str(item_type or 'unknown')
+                        })
+            
+            # Calculate dynamic sectionsOrder
+            positions = {}
+            for key in ['topQuery', 'songs', 'albums', 'artists', 'playlists']:
+                if key in payload and isinstance(payload[key], dict) and 'position' in payload[key]:
+                    positions[key] = payload[key]['position']
+            
+            # Sort keys by position in ascending order
+            sorted_keys = sorted(positions.keys(), key=lambda k: positions[k])
+            
+            # Filter to include only sections that have results
+            results['sectionsOrder'] = [k for k in sorted_keys if len(results.get(k, [])) > 0]
+            
+        return results
+    except Exception as e:
+        print(f"Error in unified search: {str(e)}")
+        return {
+            'songs': [],
+            'albums': [],
+            'playlists': [],
+            'artists': [],
+            'topQuery': [],
+            'sectionsOrder': []
+        }
+
+def _parse_bio(bio_data):
+    """Helper to cleanly parse and format the bio from JioSaavn API"""
+    if not bio_data:
+        return ""
+    if isinstance(bio_data, list):
+        try:
+            sorted_bio = sorted(bio_data, key=lambda x: x.get('sequence', 0) if isinstance(x, dict) else 0)
+        except Exception:
+            sorted_bio = bio_data
+        paragraphs = []
+        for section in sorted_bio:
+            if isinstance(section, dict):
+                text = section.get('text', '').strip()
+                title = section.get('title', '').strip()
+                if text:
+                    # Clean up standard line breaks
+                    text = text.replace('\r\n', '\n').replace('\r', '\n')
+                    if title and title.lower() != 'introduction':
+                        paragraphs.append(f"{title}: {text}")
+                    else:
+                        paragraphs.append(text)
+            elif isinstance(section, str):
+                paragraphs.append(section.strip())
+        return "\n\n".join(paragraphs)
+    elif isinstance(bio_data, str):
+        return bio_data.strip()
+    return str(bio_data)
+
+def get_artist_details(artist_id):
+    """Retrieve full details of an artist, including standard songs and albums"""
+    try:
+        url = f"{MUSIC_API_BASE}/artists?id={artist_id}"
+        response = requests.get(url)
+        response.raise_for_status()
+        res_data = response.json()
+        
+        if res_data.get('success') and res_data.get('data'):
+            data = res_data['data']
+            
+            # Extract high-res image
+            image_url = next((img['url'] for img in reversed(data.get('image', []))
+                            if isinstance(img, dict) and img.get('url')), '/static/default-album.png')
+            
+            # Top songs parsing
+            top_songs = []
+            for track in data.get('topSongs', []):
+                parsed = _parse_song_payload(track)
+                if parsed:
+                    top_songs.append(parsed)
+                    
+            # Top albums parsing
+            top_albums = []
+            for album in data.get('topAlbums', []):
+                album_img = next((img['url'] for img in reversed(album.get('image', []))
+                                if isinstance(img, dict) and img.get('url')), '/static/default-album.png')
+                top_albums.append({
+                    'id': str(album.get('id', '')),
+                    'name': str(album.get('name') or album.get('title') or 'Unknown Album'),
+                    'artist': str(data.get('name', 'Various Artists')),
+                    'image': str(album_img),
+                    'year': str(album.get('year', '')),
+                    'type': 'album'
+                })
+                
+            return {
+                'id': str(data.get('id', artist_id)),
+                'name': str(data.get('name', 'Unknown Artist')),
+                'image': str(image_url),
+                'follower_count': str(data.get('followerCount', data.get('fanCount', '0'))),
+                'bio': _parse_bio(data.get('bio')),
+                'top_songs': top_songs,
+                'top_albums': top_albums
+            }
+        return None
+    except Exception as e:
+        print(f"Error in get_artist_details: {str(e)}")
+        return None
+
+def get_song_details(track_id):
+    """Retrieve full details for a single song"""
+    try:
+        url = f"{MUSIC_API_BASE}/songs/{track_id}"
+        response = requests.get(url)
+        response.raise_for_status()
+        res_data = response.json()
+        
+        if res_data.get('success') and res_data.get('data'):
+            tracks_list = res_data['data']
+            if isinstance(tracks_list, list) and len(tracks_list) > 0:
+                return _parse_song_payload(tracks_list[0])
+        return None
+    except Exception as e:
+        print(f"Error in get_song_details: {str(e)}")
+        return None

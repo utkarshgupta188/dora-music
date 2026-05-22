@@ -55,16 +55,61 @@
                     <h1>Discover Music</h1>
                     <div class="search-box">
                         <i class="fas fa-search" id="searchBtn" style="cursor: pointer;"></i>
-                        <input type="text" id="searchInput" placeholder="Search for songs, artists...">
+                        <input type="text" id="searchInput" placeholder="Search for songs, albums, playlists, artists...">
+                    </div>
+                    <div id="searchFilterPills" class="search-filter-pills" style="display: none;">
+                        <button class="filter-pill active" data-filter="all">All</button>
+                        <button class="filter-pill" data-filter="songs">Songs</button>
+                        <button class="filter-pill" data-filter="albums">Albums</button>
+                        <button class="filter-pill" data-filter="playlists">Playlists</button>
+                        <button class="filter-pill" data-filter="artists">Artists</button>
                     </div>
                 </header>
 
                 <div id="loading" class="loading">
                     <div class="spinner"></div>
-                    <p>Searching...</p>
+                    <p>Loading...</p>
                 </div>
 
                 <div id="error" class="error-message"></div>
+
+                <!-- Discover Dashboard Section -->
+                <div id="discoverSection">
+                    <!-- Featured Artists Section -->
+                    <div class="discover-section">
+                        <h2 class="section-title"><i class="fas fa-users" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Featured Artists</h2>
+                        <div class="artists-scroll-container">
+                            <div id="discoverArtists" class="artists-row">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trending Hits Section -->
+                    <div class="discover-section">
+                        <h2 class="section-title"><i class="fas fa-fire" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Trending Hits</h2>
+                        <div id="discoverSongs" class="results-grid">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Featured Albums Section -->
+                    <div class="discover-section">
+                        <h2 class="section-title"><i class="fas fa-record-vinyl" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Featured Albums</h2>
+                        <div id="discoverAlbums" class="results-grid">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Curated Playlists Section -->
+                    <div class="discover-section">
+                        <h2 class="section-title"><i class="fas fa-music" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Curated Playlists</h2>
+                        <div id="discoverPlaylists" class="results-grid">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+                </div>
+
                 <h2 id="resultsTitle" style="font-size: 1.3rem; margin-bottom: 1.5rem; font-weight: 600; color: var(--primary-color); display: none; align-items: center; gap: 0.5rem;"></h2>
                 <div id="resultsContainer" class="results-grid"></div>
             </div>
@@ -101,6 +146,40 @@
                     <p style="color: var(--text-secondary); font-size: 0.9rem;">History & Next Up</p>
                 </header>
                 <div id="queueContainer" class="results-grid"></div>
+            </div>
+
+            <!-- Artist View -->
+            <div id="artistView" class="view-section">
+                <!-- Artist Hero Container -->
+                <div class="artist-header-container glass-panel">
+                    <div class="artist-header-content">
+                        <div class="artist-header-avatar">
+                            <img id="artistAvatar" src="/static/default-album.png" alt="Artist Profile">
+                        </div>
+                        <div class="artist-header-info">
+                            <span class="verified-badge"><i class="fas fa-check-circle"></i> Verified Artist</span>
+                            <h1 id="artistHeaderName">Artist Name</h1>
+                            <p id="artistFollowers" class="followers-count"><i class="fas fa-users"></i> 0 Followers</p>
+                            <p id="artistBio" class="artist-bio">Biography info here...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Songs Section -->
+                <div class="discover-section">
+                    <h2 class="section-title"><i class="fas fa-music" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Top Songs</h2>
+                    <div id="artistSongs" class="results-grid">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
+
+                <!-- Albums Section -->
+                <div class="discover-section">
+                    <h2 class="section-title"><i class="fas fa-compact-disc" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Albums</h2>
+                    <div id="artistAlbums" class="results-grid">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
             </div>
 
             <!-- Settings Modal (Simple overlay for now) -->
@@ -194,7 +273,7 @@
             <div class="track-info">
                 <div id="playerTrackName">No track selected</div>
                 <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                    <span id="playerArtistName">-</span>
+                    <span id="playerArtistName" class="artist-link">-</span>
                     <span id="playerVibeBadge" class="vibe-badge" style="display: none;"></span>
                 </div>
             </div>

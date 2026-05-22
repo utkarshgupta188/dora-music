@@ -4,7 +4,9 @@ const state = {
     favorites: JSON.parse(localStorage.getItem('dora_favorites')) || [],
     playlists: JSON.parse(localStorage.getItem('dora_playlists')) || {},
     quality: localStorage.getItem('dora_quality') || '320kbps',
-    isPlaying: false
+    isPlaying: false,
+    searchResults: null,
+    activeSearchFilter: 'all'
 };
 
 // DOM Elements
@@ -12,7 +14,8 @@ const views = {
     search: document.getElementById('searchView'),
     favorites: document.getElementById('favoritesView'),
     playlists: document.getElementById('playlistsView'),
-    queue: document.getElementById('queueView')
+    queue: document.getElementById('queueView'),
+    artist: document.getElementById('artistView')
 };
 
 const nav = {
@@ -77,8 +80,8 @@ function init() {
     renderFavorites();
     restorePlayerState();
 
-    // Populate the home page with featured trending music on startup
-    searchTracks('Top Hits', true);
+    // Populate the home page with unified discover dashboard
+    loadDiscoverPage();
 }
 
 // --- Navigation ---
@@ -189,78 +192,290 @@ function switchView(viewName) {
     }
 }
 
-// --- Search ---
+// --- Search & Unified Discovery Dashboard ---
 
 const searchIcon = document.querySelector('.search-box i');
-// Backup selector using ID
 const searchInputById = document.getElementById('searchInput');
 
-function setupSearchListeners() {
-    console.log("Setting up search listeners...");
+function triggerArtistSearch(artistName) {
+    if (!artistName || artistName === '-') return;
+    console.log("Routing artist click to Artist Page:", artistName);
+    openArtistPage(artistName, true);
+}
 
-    // Handler function
+function setupSearchListeners() {
+    console.log("Setting up search listeners and pills...");
+
     const handleSearch = (inputElement) => {
         const query = inputElement.value.trim();
         console.log("Search triggered with query:", query);
         if (query) {
             searchTracks(query);
-            inputElement.blur(); // Collapse keyboard on mobile / remove focus
+            inputElement.blur();
         } else {
-            console.warn("Empty query");
+            restoreDiscoverView();
         }
     };
 
-    // Listener for ID selector
+    // Enter Key
     if (searchInputById) {
-        console.log("Found search input by ID");
         searchInputById.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleSearch(searchInputById);
         });
-    }
-
-    // Listener for Class selector (if different, just to be safe)
-    if (searchBoxInput && searchBoxInput !== searchInputById) {
-        console.log("Found search input by Class");
-        searchBoxInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearch(searchBoxInput);
+        // Clear search when empty
+        searchInputById.addEventListener('input', (e) => {
+            if (e.target.value.trim() === '') {
+                restoreDiscoverView();
+            }
         });
     }
 
-    // Click on Icon
+    if (searchBoxInput && searchBoxInput !== searchInputById) {
+        searchBoxInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch(searchBoxInput);
+        });
+        searchBoxInput.addEventListener('input', (e) => {
+            if (e.target.value.trim() === '') {
+                restoreDiscoverView();
+            }
+        });
+    }
+
+    // Click Icon
     if (searchIcon) {
-        console.log("Found search icon");
         searchIcon.style.cursor = 'pointer';
         searchIcon.addEventListener('click', () => {
             const input = searchInputById || searchBoxInput;
             if (input) handleSearch(input);
         });
-    } else {
-        console.error("Search icon not found");
+    }
+
+    // Filter Pills Click Handler
+    const pillsContainer = document.getElementById('searchFilterPills');
+    if (pillsContainer) {
+        pillsContainer.addEventListener('click', (e) => {
+            const pill = e.target.closest('.filter-pill');
+            if (!pill) return;
+
+            // Remove active class from all pills
+            pillsContainer.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+
+            // Update state & render
+            state.activeSearchFilter = pill.dataset.filter;
+            console.log("Active search filter:", state.activeSearchFilter);
+            renderSearchResults();
+        });
     }
 }
 
-async function searchTracks(query, isFeatured = false) {
+function restoreDiscoverView() {
+    state.searchResults = null;
+    const input = searchInputById || searchBoxInput;
+    if (input) input.value = '';
+
+    // Hide search details, show discover
+    const pills = document.getElementById('searchFilterPills');
+    if (pills) pills.style.display = 'none';
+
+    const title = document.getElementById('resultsTitle');
+    if (title) title.style.display = 'none';
+
+    resultsContainer.innerHTML = '';
+    
+    const discoverSection = document.getElementById('discoverSection');
+    if (discoverSection) discoverSection.style.display = 'block';
+}
+
+async function loadDiscoverPage() {
     showLoading(true);
+    const discoverSection = document.getElementById('discoverSection');
+    if (discoverSection) discoverSection.style.display = 'block';
+    
+    const pills = document.getElementById('searchFilterPills');
+    if (pills) pills.style.display = 'none';
+
+    const title = document.getElementById('resultsTitle');
+    if (title) title.style.display = 'none';
+
     resultsContainer.innerHTML = '';
 
-    const resultsTitle = document.getElementById('resultsTitle');
-    if (resultsTitle) {
-        if (isFeatured) {
-            resultsTitle.innerHTML = '<i class="fas fa-fire"></i> Trending Today';
-        } else {
-            resultsTitle.innerHTML = `<i class="fas fa-search"></i> Search Results for "${query}"`;
-        }
-        resultsTitle.style.display = 'flex';
-    }
-
     try {
-        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+        const response = await fetch('/api/discover');
         const data = await response.json();
 
         if (response.ok) {
-            displayResults(data, resultsContainer);
+            renderDiscoverArtists(data.top_artists);
+            renderDiscoverSongs(data.trending_songs);
+            renderDiscoverAlbums(data.featured_albums);
+            renderDiscoverPlaylists(data.featured_playlists);
         } else {
-            showError('Failed to search tracks');
+            showError('Failed to load discovery data');
+        }
+    } catch (error) {
+        console.error("Discover error:", error);
+        showError('Network error loading discovery dashboard');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function renderDiscoverArtists(artists) {
+    const container = document.getElementById('discoverArtists');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!artists || artists.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem;">No artists available</p>';
+        return;
+    }
+
+    artists.forEach(artist => {
+        const card = document.createElement('div');
+        card.className = 'artist-circle-card';
+        card.innerHTML = `
+            <div class="artist-image-container">
+                <img src="${artist.image}" alt="${artist.name}" class="artist-image">
+            </div>
+            <span class="artist-name">${artist.name}</span>
+        `;
+        
+        card.addEventListener('click', () => {
+            if (artist.id && /^\d+$/.test(artist.id)) {
+                openArtistPage(artist.id, false);
+            } else {
+                openArtistPage(artist.name, true);
+            }
+        });
+
+        container.appendChild(card);
+    });
+}
+
+function renderDiscoverSongs(songs) {
+    const container = document.getElementById('discoverSongs');
+    if (!container) return;
+    displayResults(songs, container);
+}
+
+function renderDiscoverAlbums(albums) {
+    const container = document.getElementById('discoverAlbums');
+    if (!container) return;
+    renderCompilationGrid(albums, container, 'album');
+}
+
+function renderDiscoverPlaylists(playlists) {
+    const container = document.getElementById('discoverPlaylists');
+    if (!container) return;
+    renderCompilationGrid(playlists, container, 'playlist');
+}
+
+function renderCompilationGrid(items, container, type) {
+    container.innerHTML = '';
+    if (!items || items.length === 0) {
+        container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 1rem;">No ${type}s found</p>`;
+        return;
+    }
+
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = `${type}-card`;
+        
+        const subtitleHtml = item.artist 
+            ? `<p class="artist-link">${item.artist}</p>` 
+            : `<p>${item.description || ''}</p>`;
+
+        card.innerHTML = `
+            <div class="card-image-container">
+                <span class="${type}-badge">${type}</span>
+                <img src="${item.image}" alt="${item.name}" class="card-image">
+                <div class="play-overlay">
+                    <i class="fas fa-play-circle"></i>
+                </div>
+                <button class="queue-compilation-btn" title="Queue all tracks" style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(0,0,0,0.7); border: none; color: var(--primary-color); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 5; opacity: 0; transition: all 0.3s ease; transform: translateY(-5px);">
+                    <i class="fas fa-list-ul"></i>
+                </button>
+            </div>
+            <div class="card-info">
+                <h3>${item.name}</h3>
+                ${subtitleHtml}
+            </div>
+        `;
+
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.artist-link')) {
+                e.stopPropagation();
+                triggerArtistSearch(item.artist);
+                return;
+            }
+            if (!e.target.closest('.queue-compilation-btn')) {
+                playAlbumOrPlaylist(item.id, type, item.name);
+            }
+        });
+
+        const queueCompBtn = card.querySelector('.queue-compilation-btn');
+        if (queueCompBtn) {
+            queueCompBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                queueAlbumOrPlaylist(item.id, type, item.name);
+            });
+        }
+
+        container.appendChild(card);
+    });
+}
+
+async function playAlbumOrPlaylist(id, type, name) {
+    showToast(`Loading ${type}: ${name}...`, 'circle-notch');
+    try {
+        const endpoint = type === 'album' ? `/api/albums/${id}` : `/api/playlists/${id}`;
+        const response = await fetch(endpoint);
+        const tracks = await response.json();
+
+        if (response.ok && tracks.length > 0) {
+            showToast(`Queued ${tracks.length} tracks!`, 'list-ol');
+            playPlaylist(tracks, 0);
+        } else {
+            showToast(`Could not fetch tracks for this ${type}`, 'times');
+        }
+    } catch (error) {
+        console.error(`Error loading compilation:`, error);
+        showToast('Connection error playing compilation', 'exclamation-triangle');
+    }
+}
+
+async function searchTracks(query) {
+    showLoading(true);
+    resultsContainer.innerHTML = '';
+
+    const discoverSection = document.getElementById('discoverSection');
+    if (discoverSection) discoverSection.style.display = 'none';
+
+    const title = document.getElementById('resultsTitle');
+    if (title) {
+        title.innerHTML = `<i class="fas fa-search"></i> Search Results for "${query}"`;
+        title.style.display = 'flex';
+    }
+
+    const pills = document.getElementById('searchFilterPills');
+    if (pills) {
+        pills.style.display = 'flex';
+        // Reset filter tab to 'all' on new searches
+        pills.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        const allPill = pills.querySelector('[data-filter="all"]');
+        if (allPill) allPill.classList.add('active');
+    }
+    state.activeSearchFilter = 'all';
+
+    try {
+        const response = await fetch(`/api/search/all?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        if (response.ok) {
+            state.searchResults = data;
+            renderSearchResults();
+        } else {
+            showError('Failed to retrieve search results');
         }
     } catch (error) {
         showError(error.message);
@@ -269,10 +484,279 @@ async function searchTracks(query, isFeatured = false) {
     }
 }
 
+function renderSearchResults() {
+    resultsContainer.innerHTML = '';
+    
+    if (!state.searchResults) {
+        resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); grid-column: 1/-1;">Type a keyword to begin searching.</p>';
+        return;
+    }
+
+    const { songs, albums, playlists, artists } = state.searchResults;
+    const filter = state.activeSearchFilter;
+
+    // Helper to display category header
+    const createCategoryHeader = (titleText, filterKey) => {
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.innerHTML = `
+            <h3>${titleText}</h3>
+            <button class="view-all-link" data-target="${filterKey}">See All</button>
+        `;
+        
+        header.querySelector('.view-all-link').addEventListener('click', () => {
+            const pills = document.getElementById('searchFilterPills');
+            if (pills) {
+                pills.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+                const targetPill = pills.querySelector(`[data-filter="${filterKey}"]`);
+                if (targetPill) targetPill.classList.add('active');
+            }
+            state.activeSearchFilter = filterKey;
+            renderSearchResults();
+        });
+        
+        return header;
+    };
+
+    if (filter === 'all') {
+        let hasResults = false;
+
+        const sectionsOrder = state.searchResults.sectionsOrder || ['topQuery', 'songs', 'artists', 'albums', 'playlists'];
+
+        sectionsOrder.forEach(section => {
+            if (section === 'topQuery') {
+                const topItems = state.searchResults.topQuery;
+                if (topItems && topItems.length > 0) {
+                    hasResults = true;
+                    const item = topItems[0];
+                    const sec = document.createElement('div');
+                    sec.className = 'search-category-section';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'category-header';
+                    header.innerHTML = `<h3><i class="fas fa-crown" style="color: gold; margin-right: 0.5rem;"></i> Top Result</h3>`;
+                    sec.appendChild(header);
+
+                    const card = document.createElement('div');
+                    card.className = 'top-result-card';
+                    
+                    const isArtist = item.type === 'artist';
+                    const imgClass = isArtist ? 'top-result-image artist-type' : 'top-result-image';
+                    
+                    let actionsHtml = '';
+                    if (item.type === 'song') {
+                        actionsHtml = `
+                            <div class="top-result-actions">
+                                <button class="top-result-play-btn">
+                                    <i class="fas fa-play"></i> Play Now
+                                </button>
+                                <button class="top-result-icon-btn queue-btn-top" title="Add to Queue">
+                                    <i class="fas fa-list-ul"></i>
+                                </button>
+                                <button class="top-result-icon-btn download-btn-top" title="Download">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        `;
+                    } else if (isArtist) {
+                        actionsHtml = `
+                            <div class="top-result-actions">
+                                <button class="top-result-play-btn view-artist-btn-top">
+                                    <i class="fas fa-user"></i> View Profile
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        actionsHtml = `
+                            <div class="top-result-actions">
+                                <button class="top-result-play-btn play-compilation-btn-top">
+                                    <i class="fas fa-play"></i> Play Compilation
+                                </button>
+                                <button class="top-result-icon-btn queue-compilation-btn-top" title="Queue All">
+                                    <i class="fas fa-list-ul"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    const badgeText = item.type.toUpperCase();
+                    const subtitle = item.artist || item.description || (item.type === 'artist' ? 'Artist' : '');
+
+                    card.innerHTML = `
+                        <img src="${item.image}" alt="${item.name}" class="${imgClass}">
+                        <div class="top-result-info">
+                            <span class="top-result-badge"><i class="fas fa-sparkles"></i> ${badgeText} MATCH</span>
+                            <h2 class="top-result-title">${item.name}</h2>
+                            <p class="top-result-subtitle">${subtitle}</p>
+                            ${actionsHtml}
+                        </div>
+                    `;
+
+                    // Event handlers
+                    card.addEventListener('click', (e) => {
+                        if (e.target.closest('.top-result-actions')) return;
+                        if (item.type === 'song') {
+                            playTrack(item);
+                        } else if (item.type === 'artist') {
+                            if (item.id && /^\d+$/.test(item.id)) {
+                                openArtistPage(item.id, false);
+                            } else {
+                                openArtistPage(item.name, true);
+                            }
+                        } else {
+                            playAlbumOrPlaylist(item.id, item.type, item.name);
+                        }
+                    });
+
+                    if (item.type === 'song') {
+                        card.querySelector('.top-result-play-btn').addEventListener('click', () => {
+                            playTrack(item);
+                        });
+                        card.querySelector('.queue-btn-top').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            addToQueue(item);
+                        });
+                        card.querySelector('.download-btn-top').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            downloadTrack(item);
+                        });
+                    } else if (isArtist) {
+                        card.querySelector('.view-artist-btn-top').addEventListener('click', () => {
+                            if (item.id && /^\d+$/.test(item.id)) {
+                                openArtistPage(item.id, false);
+                            } else {
+                                openArtistPage(item.name, true);
+                            }
+                        });
+                    } else {
+                        card.querySelector('.play-compilation-btn-top').addEventListener('click', () => {
+                            playAlbumOrPlaylist(item.id, item.type, item.name);
+                        });
+                        card.querySelector('.queue-compilation-btn-top').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            queueAlbumOrPlaylist(item.id, item.type, item.name);
+                        });
+                    }
+
+                    sec.appendChild(card);
+                    resultsContainer.appendChild(sec);
+                }
+            } else if (section === 'songs') {
+                if (songs && songs.length > 0) {
+                    hasResults = true;
+                    const sec = document.createElement('div');
+                    sec.className = 'search-category-section';
+                    sec.appendChild(createCategoryHeader('Songs', 'songs'));
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'results-grid';
+                    displayResults(songs.slice(0, 5), grid);
+                    sec.appendChild(grid);
+                    resultsContainer.appendChild(sec);
+                }
+            } else if (section === 'artists') {
+                if (artists && artists.length > 0) {
+                    hasResults = true;
+                    const sec = document.createElement('div');
+                    sec.className = 'search-category-section';
+                    sec.appendChild(createCategoryHeader('Artists', 'artists'));
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'results-grid';
+                    
+                    artists.slice(0, 6).forEach(artist => {
+                        const card = document.createElement('div');
+                        card.className = 'artist-circle-card';
+                        card.innerHTML = `
+                            <div class="artist-image-container">
+                                <img src="${artist.image}" alt="${artist.name}" class="artist-image">
+                            </div>
+                            <span class="artist-name">${artist.name}</span>
+                        `;
+                        card.addEventListener('click', () => {
+                            if (artist.id && /^\d+$/.test(artist.id)) {
+                                openArtistPage(artist.id, false);
+                            } else {
+                                openArtistPage(artist.name, true);
+                            }
+                        });
+                        grid.appendChild(card);
+                    });
+                    
+                    sec.appendChild(grid);
+                    resultsContainer.appendChild(sec);
+                }
+            } else if (section === 'albums') {
+                if (albums && albums.length > 0) {
+                    hasResults = true;
+                    const sec = document.createElement('div');
+                    sec.className = 'search-category-section';
+                    sec.appendChild(createCategoryHeader('Albums', 'albums'));
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'results-grid';
+                    renderCompilationGrid(albums.slice(0, 6), grid, 'album');
+                    sec.appendChild(grid);
+                    resultsContainer.appendChild(sec);
+                }
+            } else if (section === 'playlists') {
+                if (playlists && playlists.length > 0) {
+                    hasResults = true;
+                    const sec = document.createElement('div');
+                    sec.className = 'search-category-section';
+                    sec.appendChild(createCategoryHeader('Playlists', 'playlists'));
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'results-grid';
+                    renderCompilationGrid(playlists.slice(0, 6), grid, 'playlist');
+                    sec.appendChild(grid);
+                    resultsContainer.appendChild(sec);
+                }
+            }
+        });
+
+        if (!hasResults) {
+            resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); grid-column: 1/-1; padding: 2rem 0;">No results found across any category.</p>';
+        }
+    } else {
+        // Specific view
+        if (filter === 'songs') {
+            displayResults(songs, resultsContainer);
+        } else if (filter === 'albums') {
+            renderCompilationGrid(albums, resultsContainer, 'album');
+        } else if (filter === 'playlists') {
+            renderCompilationGrid(playlists, resultsContainer, 'playlist');
+        } else if (filter === 'artists') {
+            if (!artists || artists.length === 0) {
+                resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); grid-column: 1/-1; padding: 2rem 0;">No matching artists found.</p>';
+                return;
+            }
+            artists.forEach(artist => {
+                const card = document.createElement('div');
+                card.className = 'artist-circle-card';
+                card.innerHTML = `
+                    <div class="artist-image-container">
+                        <img src="${artist.image}" alt="${artist.name}" class="artist-image">
+                    </div>
+                    <span class="artist-name">${artist.name}</span>
+                `;
+                card.addEventListener('click', () => {
+                    if (artist.id && /^\d+$/.test(artist.id)) {
+                        openArtistPage(artist.id, false);
+                    } else {
+                        openArtistPage(artist.name, true);
+                    }
+                });
+                resultsContainer.appendChild(card);
+            });
+        }
+    }
+}
+
 function displayResults(tracks, container) {
     container.innerHTML = '';
     if (!tracks || tracks.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); grid-column: 1/-1;">No results found</p>';
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); grid-column: 1/-1; padding: 1rem 0;">No results found</p>';
         return;
     }
 
@@ -288,10 +772,13 @@ function displayResults(tracks, container) {
             </div>
             <div class="track-info">
                 <h3>${track.name}</h3>
-                <p>${track.artist}</p>
+                <p class="artist-link">${track.artist}</p>
             </div>
             <button class="download-btn" title="Download">
                 <i class="fas fa-download"></i>
+            </button>
+            <button class="queue-btn" title="Add to Queue">
+                <i class="fas fa-list-ul"></i>
             </button>
             <button class="add-playlist-btn" title="Add to Playlist" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;">
                 <i class="fas fa-plus"></i>
@@ -300,7 +787,12 @@ function displayResults(tracks, container) {
 
         // Click on card plays track (excluding buttons)
         card.addEventListener('click', (e) => {
-            if (!e.target.closest('.download-btn') && !e.target.closest('.add-playlist-btn')) {
+            if (e.target.closest('.artist-link')) {
+                e.stopPropagation();
+                triggerArtistSearch(track.artist);
+                return;
+            }
+            if (!e.target.closest('.download-btn') && !e.target.closest('.queue-btn') && !e.target.closest('.add-playlist-btn')) {
                 playTrack(track);
             }
         });
@@ -310,6 +802,14 @@ function displayResults(tracks, container) {
             e.stopPropagation();
             downloadTrack(track);
         });
+
+        const queueBtn = card.querySelector('.queue-btn');
+        if (queueBtn) {
+            queueBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addToQueue(track);
+            });
+        }
 
         const addPlaylistBtn = card.querySelector('.add-playlist-btn');
         addPlaylistBtn.addEventListener('click', (e) => {
@@ -346,18 +846,34 @@ function renderQueue() {
             </div>
             <div class="track-info">
                 <h3>${track.name}</h3>
-                <p>${track.artist}</p>
+                <p class="artist-link">${track.artist}</p>
             </div>
+            <button class="delete-queue-btn" title="Remove from Queue" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); border: none; color: #ff5555; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 5;">
+                <i class="fas fa-trash"></i>
+            </button>
             ${index === state.currentTrackIndex ?
-                '<div style="position: absolute; top: 10px; right: 10px; color: var(--primary-color); background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">Playing</div>'
+                '<div style="position: absolute; bottom: 10px; right: 10px; color: var(--primary-color); background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--primary-color); z-index: 3;"><i class="fas fa-volume-up"></i> Playing</div>'
                 : ''}
         `;
 
-        card.addEventListener('click', () => {
-            // Jump to that track in queue
-            state.currentTrackIndex = index;
-            playTrack(track, false);
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.artist-link')) {
+                e.stopPropagation();
+                triggerArtistSearch(track.artist);
+                return;
+            }
+            if (!e.target.closest('.delete-queue-btn')) {
+                // Jump to that track in queue
+                state.currentTrackIndex = index;
+                playTrack(track, false);
+            }
         });
+
+        card.querySelector('.delete-queue-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeFromQueue(index);
+        });
+
         queueContainer.appendChild(card);
     });
 }
@@ -397,33 +913,59 @@ function playPlaylist(playlist, startIndex = 0) {
 }
 
 async function playTrack(track, fromPlaylist = true) {
+    let fullTrack = track;
+    if (!track.play_url && (!track.downloadUrls || track.downloadUrls.length === 0)) {
+        console.log(`Lazy-loading stream details for track: "${track.name}" (ID: ${track.id})`);
+        try {
+            const response = await fetch(`/api/songs/${track.id}`);
+            const data = await response.json();
+            if (response.ok && data) {
+                fullTrack = data;
+                if (fromPlaylist) {
+                    state.currentPlaylist = [fullTrack];
+                    state.currentTrackIndex = 0;
+                } else {
+                    const idx = state.currentPlaylist.findIndex(t => t.id === track.id);
+                    if (idx !== -1) {
+                        state.currentPlaylist[idx] = fullTrack;
+                    }
+                }
+            } else {
+                showToast('Failed to fetch stream details', 'exclamation-triangle');
+                return;
+            }
+        } catch (error) {
+            console.error("Error lazy loading track details:", error);
+            showToast('Network error loading streams', 'exclamation-triangle');
+            return;
+        }
+    }
+
     // If it's a new track from search (not next/prev), update playlist context
     if (fromPlaylist) {
-        // We aren't maintaining a full queue efficiently yet, just single playback from click
-        // For infinite radio, 'currentPlaylist' matters less than 'currentTrack'
-        state.currentPlaylist = [track];
+        state.currentPlaylist = [fullTrack];
         state.currentTrackIndex = 0;
     }
 
     saveQueue(); // Save state
 
     // Update UI
-    player.trackName.textContent = track.name;
-    player.artistName.textContent = track.artist;
-    player.image.src = track.image;
+    player.trackName.textContent = fullTrack.name;
+    player.artistName.textContent = fullTrack.artist;
+    player.image.src = fullTrack.image;
     player.container.style.display = 'flex'; // Ensure visible
 
     // Update dynamic vibe badge
     const badge = document.getElementById('playerVibeBadge');
     if (badge) {
-        if (track.mood && track.mood !== 'general') {
+        if (fullTrack.mood && fullTrack.mood !== 'general') {
             let emoji = '🎵';
-            if (track.mood === 'romantic') emoji = '💖';
-            else if (track.mood === 'sad') emoji = '😢';
-            else if (track.mood === 'dance') emoji = '🔥';
+            if (fullTrack.mood === 'romantic') emoji = '💖';
+            else if (fullTrack.mood === 'sad') emoji = '😢';
+            else if (fullTrack.mood === 'dance') emoji = '🔥';
             
-            badge.innerHTML = `<i class="fas fa-magic"></i> ${emoji} ${track.mood} Vibe`;
-            badge.className = `vibe-badge ${track.mood}`;
+            badge.innerHTML = `<i class="fas fa-magic"></i> ${emoji} ${fullTrack.mood} Vibe`;
+            badge.className = `vibe-badge ${fullTrack.mood}`;
             badge.style.display = 'inline-flex';
         } else {
             badge.style.display = 'none';
@@ -431,7 +973,7 @@ async function playTrack(track, fromPlaylist = true) {
     }
 
     // Select Audio Quality
-    const selectedUrl = getUrlForQuality(track);
+    const selectedUrl = getUrlForQuality(fullTrack);
 
     if (!selectedUrl) {
         showError('Audio URL not available for this track');
@@ -446,7 +988,7 @@ async function playTrack(track, fromPlaylist = true) {
         state.isPlaying = true;
         updatePlayPauseIcon();
         player.image.classList.add('playing');
-        updateLikeButton(track.id);
+        updateLikeButton(fullTrack.id);
     } catch (error) {
         console.error("Playback error", error);
     }
@@ -533,8 +1075,16 @@ function setupPlayerListeners() {
     player.nextBtn.addEventListener('click', playNextTrack);
     player.prevBtn.addEventListener('click', playPrevTrack);
 
-    player.likeBtn.addEventListener('click', (e) => e.stopPropagation());
-    player.addBtn.addEventListener('click', (e) => e.stopPropagation());
+    // Clicks on likeBtn and addBtn bubble up to document.body where they are handled by global delegation.
+    
+    if (player.artistName) {
+        player.artistName.addEventListener('click', () => {
+            const artist = player.artistName.textContent.trim();
+            if (artist && artist !== '-') {
+                triggerArtistSearch(artist);
+            }
+        });
+    }
     // Logic moved to delegation in setupNavigation to ensure it always fires
 }
 
@@ -995,18 +1545,26 @@ function openPlaylist(name) {
                 </div>
                 <div class="track-info">
                     <h3>${track.name}</h3>
-                    <p>${track.artist}</p>
+                    <p class="artist-link">${track.artist}</p>
                 </div>
                 <!-- Buttons same as usual -->
                 <button class="download-btn" title="Download">
                     <i class="fas fa-download"></i>
                 </button>
-                 <button class="delete-from-playlist-btn" title="Remove" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); border: none; color: #ff5555; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;">
+                <button class="queue-btn" title="Add to Queue">
+                    <i class="fas fa-list-ul"></i>
+                </button>
+                <button class="delete-from-playlist-btn" title="Remove" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); border: none; color: #ff5555; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;">
                     <i class="fas fa-times"></i>
                 </button>
             `;
 
             card.addEventListener('click', (e) => {
+                if (e.target.closest('.artist-link')) {
+                    e.stopPropagation();
+                    triggerArtistSearch(track.artist);
+                    return;
+                }
                 if (!e.target.closest('button')) {
                     // Play this playlist starting from this track
                     const startIdx = tracks.findIndex(t => t.id === track.id);
@@ -1019,6 +1577,11 @@ function openPlaylist(name) {
             card.querySelector('.download-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
                 downloadTrack(track);
+            });
+
+            card.querySelector('.queue-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                addToQueue(track);
             });
 
             // Remove from playlist
@@ -1116,6 +1679,142 @@ function addToPlaylist(playlistName, track) {
         addToPlaylistModal.classList.remove('active');
     } else {
         showToast('Track already in playlist', 'exclamation-circle');
+    }
+}
+
+// --- Queue Controls ---
+
+function addToQueue(track) {
+    state.currentPlaylist.push(track);
+    saveQueue();
+    showToast(`"${track.name}" added to queue`, 'list-ul');
+    
+    // Playback Idle Smart-Start: If player is idle or queue was empty, start playing
+    if (state.currentTrackIndex === -1 || state.currentPlaylist.length === 1) {
+        state.currentTrackIndex = state.currentPlaylist.length - 1;
+        playTrack(track, false);
+    } else if (views.queue.classList.contains('active')) {
+        renderQueue();
+    }
+}
+
+async function queueAlbumOrPlaylist(id, type, name) {
+    showToast(`Queueing ${type}: ${name}...`, 'circle-notch');
+    try {
+        const endpoint = type === 'album' ? `/api/albums/${id}` : `/api/playlists/${id}`;
+        const response = await fetch(endpoint);
+        const tracks = await response.json();
+
+        if (response.ok && tracks.length > 0) {
+            const wasIdle = (state.currentTrackIndex === -1 || state.currentPlaylist.length === 0);
+            
+            tracks.forEach(track => {
+                state.currentPlaylist.push(track);
+            });
+            saveQueue();
+            
+            showToast(`Queued ${tracks.length} tracks from "${name}"`, 'list-ul');
+            
+            if (wasIdle) {
+                state.currentTrackIndex = state.currentPlaylist.length - tracks.length;
+                playTrack(state.currentPlaylist[state.currentTrackIndex], false);
+            } else if (views.queue.classList.contains('active')) {
+                renderQueue();
+            }
+        } else {
+            showToast(`Could not fetch tracks for this ${type}`, 'times');
+        }
+    } catch (error) {
+        console.error(`Error queueing compilation:`, error);
+        showToast('Connection error queueing compilation', 'exclamation-triangle');
+    }
+}
+
+function removeFromQueue(index) {
+    if (index < 0 || index >= state.currentPlaylist.length) return;
+    
+    const wasPlaying = (index === state.currentTrackIndex);
+    
+    state.currentPlaylist.splice(index, 1);
+    
+    if (state.currentPlaylist.length === 0) {
+        state.currentTrackIndex = -1;
+        player.audio.pause();
+        state.isPlaying = false;
+        player.container.style.display = 'none';
+    } else {
+        if (wasPlaying) {
+            if (state.currentTrackIndex >= state.currentPlaylist.length) {
+                state.currentTrackIndex = state.currentPlaylist.length - 1;
+            }
+            playTrack(state.currentPlaylist[state.currentTrackIndex], false);
+        } else if (index < state.currentTrackIndex) {
+            state.currentTrackIndex--;
+        }
+    }
+    
+    saveQueue();
+    renderQueue();
+    showToast('Removed from Queue', 'trash');
+}
+
+// --- Dedicated Artist Profile Controller ---
+
+async function openArtistPage(artistIdOrName, isName = false) {
+    showLoading(true);
+    switchView('artist');
+
+    try {
+        let artistId = artistIdOrName;
+        
+        if (isName) {
+            console.log(`Resolving artist name: "${artistIdOrName}"`);
+            const resSearch = await fetch(`/api/search/artists?query=${encodeURIComponent(artistIdOrName)}`);
+            const searchResults = await resSearch.json();
+            
+            if (resSearch.ok && searchResults.length > 0) {
+                artistId = searchResults[0].id;
+                console.log(`Resolved "${artistIdOrName}" to ID: ${artistId}`);
+            } else {
+                showToast(`Could not find artist profile for "${artistIdOrName}"`, 'exclamation-triangle');
+                switchView('search');
+                return;
+            }
+        }
+
+        console.log(`Fetching profile for artist ID: ${artistId}`);
+        const response = await fetch(`/api/artists/${artistId}`);
+        const artist = await response.json();
+
+        if (response.ok && artist) {
+            document.getElementById('artistAvatar').src = artist.image || '/static/default-album.png';
+            document.getElementById('artistHeaderName').textContent = artist.name;
+            
+            let followers = parseInt(artist.follower_count) || 0;
+            let formattedFollowers = followers > 1000000 
+                ? (followers / 1000000).toFixed(1) + 'M' 
+                : followers > 1000 
+                    ? (followers / 1000).toFixed(1) + 'K' 
+                    : followers;
+            document.getElementById('artistFollowers').innerHTML = `<i class="fas fa-users"></i> ${formattedFollowers} Followers`;
+            
+            document.getElementById('artistBio').textContent = artist.bio || 'Verified artist on Dora Music. Explore their absolute top tracks and albums below.';
+
+            const songsContainer = document.getElementById('artistSongs');
+            const albumsContainer = document.getElementById('artistAlbums');
+            
+            displayResults(artist.top_songs, songsContainer);
+            renderCompilationGrid(artist.top_albums, albumsContainer, 'album');
+        } else {
+            showToast('Failed to load artist details', 'times');
+            switchView('search');
+        }
+    } catch (error) {
+        console.error("Error opening artist profile:", error);
+        showToast('Network error loading artist profile', 'exclamation-triangle');
+        switchView('search');
+    } finally {
+        showLoading(false);
     }
 }
 

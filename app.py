@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, request, Response
-from music_api import search_tracks, get_recommendations
+from music_api import search_tracks, get_recommendations, search_all, get_discover_data, get_album_tracks, get_playlist_tracks, get_artist_details, search_artists, get_song_details
 import requests
 import re
 import os
@@ -20,6 +20,74 @@ def search():
     try:
         tracks = search_tracks(query)
         return jsonify(tracks)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/discover')
+def discover():
+    try:
+        data = get_discover_data()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/search/all')
+def search_all_route():
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify({'error': 'Query parameter is required'}), 400
+    try:
+        data = search_all(query)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/albums/<album_id>')
+def album_tracks(album_id):
+    try:
+        tracks = get_album_tracks(album_id)
+        return jsonify(tracks)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/playlists/<playlist_id>')
+def playlist_tracks(playlist_id):
+    try:
+        tracks = get_playlist_tracks(playlist_id)
+        return jsonify(tracks)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/artists/<artist_id>')
+def artist_details(artist_id):
+    try:
+        data = get_artist_details(artist_id)
+        if data:
+            return jsonify(data)
+        else:
+            return jsonify({'error': 'Artist not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/search/artists')
+def search_artists_route():
+    query = request.args.get('query', '')
+    if not query:
+        return jsonify({'error': 'Query parameter is required'}), 400
+    try:
+        data = search_artists(query)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/songs/<song_id>')
+def song_details_route(song_id):
+    try:
+        data = get_song_details(song_id)
+        if data:
+            return jsonify(data)
+        else:
+            return jsonify({'error': 'Song not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
