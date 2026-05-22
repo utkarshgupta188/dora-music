@@ -29,7 +29,10 @@
             </div>
 
             <div class="nav-links">
-                <button id="navSearch" class="nav-btn active">
+                <button id="navHome" class="nav-btn active">
+                    <i class="fas fa-home"></i> <span>Home</span>
+                </button>
+                <button id="navSearch" class="nav-btn">
                     <i class="fas fa-search"></i> <span>Search</span>
                 </button>
                 <button id="navFavorites" class="nav-btn">
@@ -49,29 +52,11 @@
 
         <!-- Main Content Area -->
         <main class="main-content">
-            <!-- Search View -->
-            <div id="searchView" class="view-section active">
+            <!-- Home View -->
+            <div id="homeView" class="view-section active">
                 <header class="header">
                     <h1>Discover Music</h1>
-                    <div class="search-box">
-                        <i class="fas fa-search" id="searchBtn" style="cursor: pointer;"></i>
-                        <input type="text" id="searchInput" placeholder="Search for songs, albums, playlists, artists...">
-                    </div>
-                    <div id="searchFilterPills" class="search-filter-pills" style="display: none;">
-                        <button class="filter-pill active" data-filter="all">All</button>
-                        <button class="filter-pill" data-filter="songs">Songs</button>
-                        <button class="filter-pill" data-filter="albums">Albums</button>
-                        <button class="filter-pill" data-filter="playlists">Playlists</button>
-                        <button class="filter-pill" data-filter="artists">Artists</button>
-                    </div>
                 </header>
-
-                <div id="loading" class="loading">
-                    <div class="spinner"></div>
-                    <p>Loading...</p>
-                </div>
-
-                <div id="error" class="error-message"></div>
 
                 <!-- Discover Dashboard Section -->
                 <div id="discoverSection">
@@ -106,6 +91,73 @@
                         <h2 class="section-title"><i class="fas fa-music" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Curated Playlists</h2>
                         <div id="discoverPlaylists" class="results-grid">
                             <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search View -->
+            <div id="searchView" class="view-section" style="display: none;">
+                <header class="header">
+                    <h1>Search</h1>
+                    <div class="search-box">
+                        <i class="fas fa-search" id="searchBtn" style="cursor: pointer;"></i>
+                        <input type="text" id="searchInput" placeholder="Search for songs, albums, playlists, artists...">
+                    </div>
+                    <div id="searchFilterPills" class="search-filter-pills" style="display: none;">
+                        <button class="filter-pill active" data-filter="all">All</button>
+                        <button class="filter-pill" data-filter="songs">Songs</button>
+                        <button class="filter-pill" data-filter="albums">Albums</button>
+                        <button class="filter-pill" data-filter="playlists">Playlists</button>
+                        <button class="filter-pill" data-filter="artists">Artists</button>
+                    </div>
+                </header>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading...</p>
+                </div>
+
+                <div id="error" class="error-message"></div>
+
+                <!-- Search Landing View (Moods & Recent Searches) -->
+                <div id="searchLandingSection">
+                    <!-- Recent Searches -->
+                    <div class="discover-section" id="recentSearchesContainer" style="display: none;">
+                        <h2 class="section-title"><i class="fas fa-history" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Recent Searches</h2>
+                        <div id="recentSearchesList" class="recent-searches-list">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Browse All Moods -->
+                    <div class="discover-section">
+                        <h2 class="section-title"><i class="fas fa-compass" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Browse All Moods</h2>
+                        <div class="moods-grid">
+                            <div class="mood-card romance" data-query="Romance">
+                                <i class="fas fa-heart"></i>
+                                <span>Romance</span>
+                            </div>
+                            <div class="mood-card party" data-query="Party">
+                                <i class="fas fa-glass-cheers"></i>
+                                <span>Party</span>
+                            </div>
+                            <div class="mood-card chill" data-query="Chill">
+                                <i class="fas fa-couch"></i>
+                                <span>Chill & Lo-Fi</span>
+                            </div>
+                            <div class="mood-card workout" data-query="Workout">
+                                <i class="fas fa-dumbbell"></i>
+                                <span>Workout</span>
+                            </div>
+                            <div class="mood-card devotional" data-query="Devotional">
+                                <i class="fas fa-om"></i>
+                                <span>Devotional</span>
+                            </div>
+                            <div class="mood-card sad" data-query="Sad">
+                                <i class="fas fa-cloud-showers-heavy"></i>
+                                <span>Sad & Soulful</span>
+                            </div>
                         </div>
                     </div>
                 </div>

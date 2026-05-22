@@ -11,6 +11,7 @@ const state = {
 
 // DOM Elements
 const views = {
+    home: document.getElementById('homeView'),
     search: document.getElementById('searchView'),
     favorites: document.getElementById('favoritesView'),
     playlists: document.getElementById('playlistsView'),
@@ -19,6 +20,7 @@ const views = {
 };
 
 const nav = {
+    home: document.getElementById('navHome'),
     search: document.getElementById('navSearch'),
     favorites: document.getElementById('navFavorites'),
     playlists: document.getElementById('navPlaylists'),
@@ -105,7 +107,9 @@ function setupNavigation() {
         if (!btn) return;
 
         // Navigation Buttons
-        if (btn.id === 'navSearch' || btn.closest('#navSearch')) {
+        if (btn.id === 'navHome' || btn.closest('#navHome')) {
+            switchView('home');
+        } else if (btn.id === 'navSearch' || btn.closest('#navSearch')) {
             switchView('search');
         } else if (btn.id === 'navFavorites' || btn.closest('#navFavorites')) {
             switchView('favorites');
@@ -189,6 +193,10 @@ function switchView(viewName) {
         renderFavorites();
     } else if (viewName === 'queue') {
         renderQueue();
+    } else if (viewName === 'search') {
+        if (typeof renderRecentSearches === 'function') {
+            renderRecentSearches();
+        }
     }
 }
 
@@ -267,6 +275,18 @@ function setupSearchListeners() {
             renderSearchResults();
         });
     }
+
+    // Setup mood cards click handler
+    document.querySelectorAll('.mood-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const query = card.dataset.query;
+            const input = document.getElementById('searchInput');
+            if (input && query) {
+                input.value = query;
+                searchTracks(query);
+            }
+        });
+    });
 }
 
 function restoreDiscoverView() {
@@ -274,7 +294,7 @@ function restoreDiscoverView() {
     const input = searchInputById || searchBoxInput;
     if (input) input.value = '';
 
-    // Hide search details, show discover
+    // Hide search details, show landing
     const pills = document.getElementById('searchFilterPills');
     if (pills) pills.style.display = 'none';
 
@@ -283,8 +303,79 @@ function restoreDiscoverView() {
 
     resultsContainer.innerHTML = '';
     
-    const discoverSection = document.getElementById('discoverSection');
-    if (discoverSection) discoverSection.style.display = 'block';
+    const landing = document.getElementById('searchLandingSection');
+    if (landing) landing.style.display = 'block';
+    
+    renderRecentSearches();
+}
+
+// --- Recent Searches Logic ---
+function getRecentSearches() {
+    try {
+        const saved = localStorage.getItem('dora_recent_searches');
+        return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function addRecentSearch(query) {
+    if (!query) return;
+    let searches = getRecentSearches();
+    searches = searches.filter(s => s.toLowerCase() !== query.toLowerCase());
+    searches.unshift(query);
+    if (searches.length > 8) searches.pop();
+    localStorage.setItem('dora_recent_searches', JSON.stringify(searches));
+    renderRecentSearches();
+}
+
+function removeRecentSearch(query) {
+    let searches = getRecentSearches();
+    searches = searches.filter(s => s !== query);
+    localStorage.setItem('dora_recent_searches', JSON.stringify(searches));
+    renderRecentSearches();
+}
+
+function renderRecentSearches() {
+    const container = document.getElementById('recentSearchesContainer');
+    const list = document.getElementById('recentSearchesList');
+    if (!container || !list) return;
+
+    const searches = getRecentSearches();
+    if (searches.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    list.innerHTML = '';
+    searches.forEach(query => {
+        const item = document.createElement('div');
+        item.className = 'recent-search-item';
+        
+        const textSpan = document.createElement('span');
+        textSpan.textContent = query;
+        textSpan.style.cursor = 'pointer';
+        textSpan.onclick = () => {
+            const input = document.getElementById('searchInput');
+            if (input) {
+                input.value = query;
+                searchTracks(query);
+            }
+        };
+
+        const removeIcon = document.createElement('span');
+        removeIcon.className = 'remove-search';
+        removeIcon.innerHTML = '<i class="fas fa-times"></i>';
+        removeIcon.onclick = (e) => {
+            e.stopPropagation();
+            removeRecentSearch(query);
+        };
+
+        item.appendChild(textSpan);
+        item.appendChild(removeIcon);
+        list.appendChild(item);
+    });
 }
 
 async function loadDiscoverPage() {
@@ -335,10 +426,11 @@ function renderDiscoverArtists(artists) {
         card.className = 'artist-circle-card';
         card.innerHTML = `
             <div class="artist-image-container">
-                <img src="${artist.image}" alt="${artist.name}" class="artist-image">
+                <img src="${artist.image}" alt="${artist.name}" class="artist-image" onerror="this.src='/static/default-album.png'">
             </div>
             <span class="artist-name">${artist.name}</span>
         `;
+
         
         card.addEventListener('click', () => {
             if (artist.id && /^\d+$/.test(artist.id)) {
@@ -448,8 +540,11 @@ async function searchTracks(query) {
     showLoading(true);
     resultsContainer.innerHTML = '';
 
-    const discoverSection = document.getElementById('discoverSection');
-    if (discoverSection) discoverSection.style.display = 'none';
+    // Save to recent searches
+    addRecentSearch(query);
+
+    const landingSection = document.getElementById('searchLandingSection');
+    if (landingSection) landingSection.style.display = 'none';
 
     const title = document.getElementById('resultsTitle');
     if (title) {

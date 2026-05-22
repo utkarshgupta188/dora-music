@@ -403,14 +403,14 @@ def get_discover_data():
     # 3. Fetch featured playlists (Curated Playlists)
     featured_playlists = search_playlists("Hits", limit=6)
     
-    # 4. Return curated popular artists
+    # 4. Return curated popular artists (real API IDs + fresh high-res images)
     top_artists = [
-        {'id': 'arijit', 'name': 'Arijit Singh', 'image': 'https://c.saavncdn.com/artists/Arijit_Singh_007_20200819121253_150x150.jpg'},
-        {'id': 'shreya', 'name': 'Shreya Ghoshal', 'image': 'https://c.saavncdn.com/artists/Shreya_Ghoshal_150x150.jpg'},
-        {'id': 'atif', 'name': 'Atif Aslam', 'image': 'https://c.saavncdn.com/artists/Atif_Aslam_150x150.jpg'},
-        {'id': 'nehak', 'name': 'Neha Kakkar', 'image': 'https://c.saavncdn.com/artists/Neha_Kakkar_150x150.jpg'},
-        {'id': 'armaan', 'name': 'Armaan Malik', 'image': 'https://c.saavncdn.com/artists/Armaan_Malik_002_20210603094838_150x150.jpg'},
-        {'id': 'badshah', 'name': 'Badshah', 'image': 'https://c.saavncdn.com/artists/Badshah_150x150.jpg'}
+        {'id': '459320', 'name': 'Arijit Singh', 'image': 'https://c.saavncdn.com/artists/Arijit_Singh_004_20241118063717_500x500.jpg'},
+        {'id': '455130', 'name': 'Shreya Ghoshal', 'image': 'https://c.saavncdn.com/artists/Shreya_Ghoshal_007_20241101074144_500x500.jpg'},
+        {'id': '21718089', 'name': 'Atif Aslam', 'image': 'https://cdn-images.dzcdn.net/images/artist/0ea90444148fff9c11d77f06a344724e/500x500-000000-80-0-0.jpg'},
+        {'id': '464932', 'name': 'Neha Kakkar', 'image': 'https://c.saavncdn.com/artists/Neha_Kakkar_007_20241212115832_500x500.jpg'},
+        {'id': '464656', 'name': 'Armaan Malik', 'image': 'https://c.saavncdn.com/artists/Armaan_Malik_005_20240819091627_500x500.jpg'},
+        {'id': '456863', 'name': 'Badshah', 'image': 'https://c.saavncdn.com/artists/Badshah_006_20241118064015_500x500.jpg'}
     ]
     
     return {
