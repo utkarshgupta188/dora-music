@@ -73,8 +73,12 @@ function init() {
     setupSettings();
     setupPlaylists();
     setupKeyboardShortcuts();
+    setupExpandablePlayer();
     renderFavorites();
     restorePlayerState();
+
+    // Populate the home page with featured trending music on startup
+    searchTracks('Top Hits', true);
 }
 
 // --- Navigation ---
@@ -200,6 +204,7 @@ function setupSearchListeners() {
         console.log("Search triggered with query:", query);
         if (query) {
             searchTracks(query);
+            inputElement.blur(); // Collapse keyboard on mobile / remove focus
         } else {
             console.warn("Empty query");
         }
@@ -234,9 +239,19 @@ function setupSearchListeners() {
     }
 }
 
-async function searchTracks(query) {
+async function searchTracks(query, isFeatured = false) {
     showLoading(true);
     resultsContainer.innerHTML = '';
+
+    const resultsTitle = document.getElementById('resultsTitle');
+    if (resultsTitle) {
+        if (isFeatured) {
+            resultsTitle.innerHTML = '<i class="fas fa-fire"></i> Trending Today';
+        } else {
+            resultsTitle.innerHTML = `<i class="fas fa-search"></i> Search Results for "${query}"`;
+        }
+        resultsTitle.style.display = 'flex';
+    }
 
     try {
         const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
@@ -398,6 +413,23 @@ async function playTrack(track, fromPlaylist = true) {
     player.image.src = track.image;
     player.container.style.display = 'flex'; // Ensure visible
 
+    // Update dynamic vibe badge
+    const badge = document.getElementById('playerVibeBadge');
+    if (badge) {
+        if (track.mood && track.mood !== 'general') {
+            let emoji = '🎵';
+            if (track.mood === 'romantic') emoji = '💖';
+            else if (track.mood === 'sad') emoji = '😢';
+            else if (track.mood === 'dance') emoji = '🔥';
+            
+            badge.innerHTML = `<i class="fas fa-magic"></i> ${emoji} ${track.mood} Vibe`;
+            badge.className = `vibe-badge ${track.mood}`;
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
     // Select Audio Quality
     const selectedUrl = getUrlForQuality(track);
 
@@ -498,10 +530,8 @@ function setupPlayerListeners() {
     player.seekSlider.addEventListener('input', seek);
     player.volumeSlider.addEventListener('input', updateVolume);
 
-    player.nextBtn.addEventListener('click', () => handleTrackEnd()); // Manual Next
-    player.prevBtn.addEventListener('click', () => {
-        player.audio.currentTime = 0; // Simple prev for now
-    });
+    player.nextBtn.addEventListener('click', playNextTrack);
+    player.prevBtn.addEventListener('click', playPrevTrack);
 
     player.likeBtn.addEventListener('click', (e) => e.stopPropagation());
     player.addBtn.addEventListener('click', (e) => e.stopPropagation());
@@ -568,17 +598,45 @@ async function handleTrackEnd() {
         const data = await response.json();
 
         if (response.ok && data.length > 0) {
+            const currentMood = currentTrack.mood;
+            console.log(`Infinite Radio: Current seed mood is '${currentMood}'`);
+
             // Strategy 1: Find completely new tracks (never played in this session)
             let candidates = data.filter(rec =>
                 !state.currentPlaylist.some(played => played.id === rec.id)
             );
 
-            // Strategy 2: If we ran out of new tracks, avoid the last 10 played tracks
-            // This prevents A -> B -> A loops and local circles
+            // Strict Vibe/Mood Continuity Filter
+            if (currentMood && currentMood !== 'general') {
+                const moodCandidates = candidates.filter(rec => rec.mood === currentMood);
+                if (moodCandidates.length > 0) {
+                    console.log(`Infinite Radio Vibe Lock: Filtering to ${moodCandidates.length} new tracks matching '${currentMood}'`);
+                    candidates = moodCandidates;
+                } else {
+                    // Try relaxing the session history but keep the mood
+                    console.log(`Infinite Radio Vibe Lock: No unplayed mood matches. Checking all recommended tracks matching '${currentMood}'`);
+                    const anyMoodMatches = data.filter(rec => rec.mood === currentMood && rec.id !== currentTrack.id);
+                    if (anyMoodMatches.length > 0) {
+                        candidates = anyMoodMatches;
+                    } else {
+                        console.log(`Infinite Radio Vibe Lock: No matching mood tracks found in recommendations. Falling back to general.`);
+                    }
+                }
+            }
+
+            // Strategy 2: If we ran out of candidates under current filters, relax filter using recent history
             if (candidates.length === 0) {
-                console.log("No new tracks found, relaxing filter...");
+                console.log("No tracks found, relaxing history filter...");
                 const recentHistoryIds = state.currentPlaylist.slice(-10).map(t => t.id);
                 candidates = data.filter(rec => !recentHistoryIds.includes(rec.id));
+                
+                // Re-apply mood check on standard fallback if mood is active
+                if (currentMood && currentMood !== 'general') {
+                    const fallbackMoodMatches = candidates.filter(rec => rec.mood === currentMood);
+                    if (fallbackMoodMatches.length > 0) {
+                        candidates = fallbackMoodMatches;
+                    }
+                }
             }
 
             // Strategy 3: Last resort - just avoid the current track logic
@@ -587,13 +645,13 @@ async function handleTrackEnd() {
                 candidates = data.filter(rec => rec.id !== currentTrack.id);
             }
 
-            // Pick a random track from the top 5 candidates to add variety
-            const poolSize = Math.min(candidates.length, 5);
+            // Pick a random track from the top 10 candidates to add variety
+            const poolSize = Math.min(candidates.length, 10);
             const randomIndex = Math.floor(Math.random() * poolSize);
             const nextTrack = candidates[randomIndex] || candidates[0];
 
             if (nextTrack) {
-                console.log(`Playing next: ${nextTrack.name} (Strategy: ${candidates.length === data.length ? 'Fallback' : 'Filtered'})`);
+                console.log(`Playing next: ${nextTrack.name} (Vibe: ${nextTrack.mood || 'general'})`);
                 // Add to current playlist state
                 state.currentPlaylist.push(nextTrack);
                 state.currentTrackIndex++;
@@ -1199,46 +1257,6 @@ function setupExpandablePlayer() {
             if (btn) btn.remove();
         }
     });
-}
-
-// initialize
-function init() {
-    setupNavigation(); // Use the event delegation setup
-    setupSettings();
-
-    document.getElementById('searchBtn').addEventListener('click', () => {
-        const query = document.getElementById('searchInput').value;
-        if (query) {
-            searchTracks(query);
-            document.getElementById('searchInput').blur();
-        }
-    });
-
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const query = e.target.value;
-            if (query) {
-                searchTracks(query);
-                e.target.blur();
-            }
-        }
-    });
-
-    // Player Controls
-    document.getElementById('playPauseButton').addEventListener('click', togglePlay);
-    document.getElementById('prevButton').addEventListener('click', playPrevTrack);
-    document.getElementById('nextButton').addEventListener('click', playNextTrack);
-
-    document.getElementById('audioPlayer').addEventListener('timeupdate', updateProgress);
-    document.getElementById('seekSlider').addEventListener('input', seek);
-    document.getElementById('volumeSlider').addEventListener('input', updateVolume);
-    document.getElementById('audioPlayer').addEventListener('ended', handleTrackEnd);
-
-    setupPlaylists();
-    setupKeyboardShortcuts();
-    setupExpandablePlayer();
-
-    renderFavorites();
 }
 
 document.addEventListener('DOMContentLoaded', init);

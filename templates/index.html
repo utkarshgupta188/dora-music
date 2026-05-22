@@ -65,6 +65,7 @@
                 </div>
 
                 <div id="error" class="error-message"></div>
+                <h2 id="resultsTitle" style="font-size: 1.3rem; margin-bottom: 1.5rem; font-weight: 600; color: var(--primary-color); display: none; align-items: center; gap: 0.5rem;"></h2>
                 <div id="resultsContainer" class="results-grid"></div>
             </div>
 
@@ -192,7 +193,10 @@
             <img id="playerImage" src="/static/default-album.png" alt="Album Art" class="spin-art">
             <div class="track-info">
                 <div id="playerTrackName">No track selected</div>
-                <div id="playerArtistName">-</div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <span id="playerArtistName">-</span>
+                    <span id="playerVibeBadge" class="vibe-badge" style="display: none;"></span>
+                </div>
             </div>
             <button id="playerLikeBtn" class="action-btn"><i class="far fa-heart"></i></button>
             <button id="playerAddBtn" class="action-btn" title="Add to Playlist" style="margin-left: 10px;">

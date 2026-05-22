@@ -1343,3 +1343,53 @@ body {
 .create-new-playlist-container button:active {
     transform: translateY(0);
 }
+
+/* Dynamic Vibe Badge Styles */
+.vibe-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    animation: pulseGlow 2.5s infinite ease-in-out;
+    letter-spacing: 0.5px;
+    user-select: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.vibe-badge.romantic {
+    background: rgba(255, 105, 180, 0.15);
+    border: 1px solid rgba(255, 105, 180, 0.4);
+    color: #ff69b4;
+    text-shadow: 0 0 5px rgba(255, 105, 180, 0.3);
+}
+
+.vibe-badge.sad {
+    background: rgba(30, 144, 255, 0.15);
+    border: 1px solid rgba(30, 144, 255, 0.4);
+    color: #1e90ff;
+    text-shadow: 0 0 5px rgba(30, 144, 255, 0.3);
+}
+
+.vibe-badge.dance {
+    background: rgba(255, 140, 0, 0.15);
+    border: 1px solid rgba(255, 140, 0, 0.4);
+    color: #ff8c00;
+    text-shadow: 0 0 5px rgba(255, 140, 0, 0.3);
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        opacity: 0.85;
+        transform: scale(1);
+        filter: drop-shadow(0 0 1px currentColor);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.04);
+        filter: drop-shadow(0 0 6px currentColor);
+    }
+}
