@@ -653,8 +653,10 @@ body {
         margin: 0;
     }
 
-    /* Sidebar Fix - Force Hide Logo */
-    .sidebar h2 {
+    /* Sidebar Fix - Force Hide Logo & widgets on mobile */
+    .sidebar .logo,
+    .sidebar .theme-switcher,
+    .sidebar .shortcuts-hint-btn {
         display: none !important;
     }
 
@@ -735,6 +737,7 @@ body {
         height: 45px;
         border-radius: 6px;
         margin-right: 10px;
+        animation: none !important;
     }
 
     .track-info {
@@ -983,6 +986,7 @@ body {
         align-items: center;
         justify-content: center;
         margin: 0;
+        transform: none !important;
     }
 
     /* Buttons Row */
@@ -1012,7 +1016,10 @@ body {
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         border-radius: 50%;
         /* Circular Art */
-        animation: spin 10s linear infinite;
+    }
+
+    .music-player-glass.expanded #playerImage.playing {
+        animation: spin 10s linear infinite !important;
         /* Optional: Restore spin if desired for record look */
     }
 
@@ -1126,24 +1133,35 @@ body {
         width: 100%;
         margin-top: 10px;
         gap: 30px;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     .music-player-glass.expanded .player-controls .control-btn {
         width: 60px;
         height: 60px;
         font-size: 2rem;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     .music-player-glass.expanded .player-controls .control-btn.main-play {
         width: 80px;
         height: 80px;
         font-size: 3rem;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     /* Show Shuffle/Repeat in expanded */
     .music-player-glass.expanded .player-controls .control-btn.shuffle-btn,
     .music-player-glass.expanded .player-controls .control-btn.repeat-btn {
-        display: flex;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         font-size: 1.5rem;
         color: var(--text-secondary);
         width: 40px;
@@ -1161,6 +1179,67 @@ body {
         font-size: 1.5rem;
         z-index: 10001;
         padding: 10px;
+    }
+
+    /* Always display download & queue buttons on mobile track cards, sized nicely */
+    .download-btn,
+    .queue-btn {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 0.9rem !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .download-btn {
+        bottom: 0.5rem !important;
+        right: 0.5rem !important;
+    }
+    .queue-btn {
+        bottom: 0.5rem !important;
+        right: 2.8rem !important;
+    }
+    /* Shift track-info padding so text doesn't overlap the buttons on mobile */
+    .results-grid .track-card .track-info {
+        padding-right: 65px !important;
+    }
+
+    /* Display volume/timer/lyrics panel controls on mobile when expanded */
+    .music-player-glass.expanded .player-right {
+        display: flex !important;
+        width: 100% !important;
+        justify-content: center !important;
+        gap: 40px !important;
+        align-items: center !important;
+        margin-top: 25px !important;
+    }
+    /* Hide volume slider and its icon on mobile expanded player */
+    .music-player-glass.expanded .player-right i.fa-volume-up,
+    .music-player-glass.expanded .player-right #volumeSlider {
+        display: none !important;
+    }
+    
+    /* Make the mobile lyrics panel display as a slide-up sheet on top of the player */
+    .lyrics-panel {
+        width: 100% !important;
+        right: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        height: 60% !important;
+        border-radius: 20px 20px 0 0 !important;
+        z-index: 20002 !important; /* Above expanded player (10000) and modals (20001) */
+    }
+
+    /* Prevent moods grid overflow on mobile */
+    .moods-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+    .mood-card {
+        padding: 1rem !important;
     }
 }
 
@@ -2705,4 +2784,59 @@ input:checked + .toggle-slider {
 }
 input:checked + .toggle-slider:before {
     transform: translateX(22px);
+}
+
+/* Continue Listening card layout */
+.continue-card {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1rem !important;
+    width: 100% !important;
+    max-width: 450px !important;
+    padding: 0.75rem !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid var(--glass-border) !important;
+}
+
+.continue-card img {
+    width: 50px !important;
+    height: 50px !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 8px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+}
+
+.continue-card .track-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    text-align: left !important;
+}
+
+.continue-card .track-info h3 {
+    font-size: 0.95rem !important;
+    margin: 0 0 2px 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: left !important;
+}
+
+.continue-card .track-info p {
+    font-size: 0.8rem !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: left !important;
+}
+
+.continue-card .resume-listening-btn {
+    flex-shrink: 0 !important;
 }
