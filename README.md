@@ -2,7 +2,7 @@
 
 A stunning, modern web-based music player featuring a beautiful Glassmorphism UI, infinite radio, and high-quality audio streaming.
 
-## ✨ Key Features
+## Key Features
 
 *   **🎨 Modern Glassmorphism UI**: A visually striking interface with animated backgrounds, glass effects, and smooth transitions.
 *   **📻 Infinite Radio**: The "Next" button is smart! It fetches suggestions based on your current track to keep the music playing endlessly without repetition.
